@@ -37,16 +37,16 @@ extension AppDelegate {
 
         // toolbar icon+text buttons, tight group, right-aligned, vertically centered with the title
         var tx = w - UI.s(20)
-        func tool(_ sym: String, _ titleText: String, _ sel: Selector) {
-            let b = makeIconButton(sym, titleText, sel, tint: nil, id: nil)
+        func tool(_ sym: String, _ titleText: String, _ act: @escaping () -> Void) {
+            let b = PillButton(symbol: sym, title: titleText); b.onClick = act
             tx -= b.frame.width
             b.setFrameOrigin(NSPoint(x: tx, y: h - UI.s(46)))
             b.autoresizingMask = [.minXMargin, .minYMargin]; bg.addSubview(b)
             tx -= UI.s(8)
         }
-        tool("folder", L.t("備份資料夾", "Backup Folder"), #selector(openDropbox))
-        tool("arrow.clockwise", L.t("重新掃描", "Rescan"), #selector(refreshMainBtn))
-        tool("folder.badge.plus", L.t("加入自訂備份", "Add Custom"), #selector(addFolderFromMain))
+        tool("folder", L.t("備份資料夾", "Backup Folder")) { [weak self] in self?.openDropbox() }
+        tool("arrow.clockwise", L.t("重新掃描", "Rescan")) { [weak self] in self?.refreshMain() }
+        tool("folder.badge.plus", L.t("加入自訂備份", "Add Custom")) { [weak self] in self?.addFolderFromMain() }
 
         let scroll = NSScrollView(frame: NSRect(x: UI.s(16), y: UI.s(16), width: w - UI.s(32), height: h - UI.s(84)))
         scroll.hasVerticalScroller = true; scroll.drawsBackground = false; scroll.autoresizingMask = [.width, .height]
@@ -54,21 +54,6 @@ extension AppDelegate {
         scroll.documentView = doc; bg.addSubview(scroll)
         win.delegate = self
         mainWin = win; mainDoc = doc; mainStatus = sub
-    }
-
-    // a compact, refined icon+text button, sized to fit
-    private func makeIconButton(_ sym: String, _ titleText: String, _ sel: Selector, tint: NSColor?, id: String?) -> NSButton {
-        let b = NSButton(title: titleText, target: self, action: sel)
-        b.bezelStyle = .rounded; b.controlSize = .small
-        b.imagePosition = .imageLeading; b.font = UI.font(11.5, .medium)
-        b.image = NSImage(systemSymbolName: sym, accessibilityDescription: titleText)?.withSymbolConfiguration(UI.symCfg(12))
-        b.imageHugsTitle = true
-        b.toolTip = titleText
-        if let tint { b.contentTintColor = tint }
-        if let id { b.identifier = NSUserInterfaceItemIdentifier(id) }
-        b.sizeToFit()
-        var f = b.frame; f.size.height = UI.s(28); f.size.width = (f.width + UI.s(10)).rounded(); b.frame = f
-        return b
     }
 
     private func entries() -> [Entry] {
@@ -131,20 +116,21 @@ extension AppDelegate {
 
         // action buttons — a tight right-aligned cluster (rightmost added first)
         var x = inner - UI.s(14)
-        func place(_ sym: String, _ t: String, _ sel: Selector, _ tint: NSColor?) {
-            let b = makeIconButton(sym, t, sel, tint: tint, id: it.id)
+        let id = it.id
+        func place(_ sym: String, _ t: String, _ destructive: Bool, _ act: @escaping () -> Void) {
+            let b = PillButton(symbol: sym, title: t, destructive: destructive); b.onClick = act
             x -= b.frame.width
             b.setFrameOrigin(NSPoint(x: x, y: (rowH - b.frame.height) / 2))
             b.autoresizingMask = [.minXMargin]; row.addSubview(b)
             x -= UI.s(6)
         }
         if it.suggestion {
-            place("plus.circle.fill", L.t("加入", "Add"), #selector(mainAdd(_:)), .controlAccentColor)
+            place("plus.circle.fill", L.t("加入", "Add"), false) { [weak self] in self?.addEntry(id) }
         } else {
-            place("icloud.and.arrow.up", L.t("備份", "Back Up"), #selector(mainBackup(_:)), nil)
-            place("clock.arrow.circlepath", L.t("還原", "Restore"), #selector(mainRestore(_:)), nil)
-            if it.id.hasPrefix("t:") { place("trash", L.t("移除", "Remove"), #selector(mainRemove(_:)), .systemRed) }
-            else if it.id == "zen" { place("pause.circle", L.t("停用", "Disable"), #selector(mainRemove(_:)), nil) }
+            place("icloud.and.arrow.up", L.t("備份", "Back Up"), false) { [weak self] in self?.backupEntry(id) }
+            place("clock.arrow.circlepath", L.t("還原", "Restore"), false) { [weak self] in self?.restoreEntry(id) }
+            if id.hasPrefix("t:") { place("trash", L.t("移除", "Remove"), true) { [weak self] in self?.removeEntry(id) } }
+            else if id == "zen" { place("pause.circle", L.t("停用", "Disable"), false) { [weak self] in self?.removeEntry(id) } }
         }
 
         let nameX = iconX + isz + UI.s(12)
@@ -160,11 +146,6 @@ extension AppDelegate {
         return row
     }
 
-    @objc func mainBackup(_ s: NSButton) { backupEntry((s.identifier?.rawValue) ?? "") }
-    @objc func mainRestore(_ s: NSButton) { restoreEntry((s.identifier?.rawValue) ?? "") }
-    @objc func mainAdd(_ s: NSButton) { addEntry((s.identifier?.rawValue) ?? "") }
-    @objc func mainRemove(_ s: NSButton) { removeEntry((s.identifier?.rawValue) ?? "") }
-    @objc func refreshMainBtn() { refreshMain() }
     @objc func addFolderFromMain() { addTarget(); refreshMain() }
 
     // 0 = cancel, 1 = config/setting only, 2 = also delete backup files
