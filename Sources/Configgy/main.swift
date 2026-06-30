@@ -155,6 +155,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     var paused = false
     var fdaOK = true
     var idleRevert: DispatchWorkItem?
+    let menu = NSMenu()                       // persistent; repopulated on every open via menuNeedsUpdate
     let header = NSMenuItem(title: "Configgy", action: nil, keyEquivalent: "")
     let fdaItem = NSMenuItem(title: "", action: #selector(openFDAGuide), keyEquivalent: "")
     let pauseItem = NSMenuItem(title: "", action: #selector(togglePause), keyEquivalent: "")
@@ -175,7 +176,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         setIcon(.idle)
         pauseItem.target = self
         fdaItem.target = self
-        buildMenu()
+        menu.delegate = self
+        statusItem.menu = menu                  // populated on demand by menuNeedsUpdate
         wasRunning = engine.zenRunning()
         timer = Timer.scheduledTimer(withTimeInterval: 2.5, repeats: true) { [weak self] _ in self?.tick() }
         if !fdaOK { showWelcome(firstRun: true) }       // macOS never auto-prompts for FDA — guide the user
@@ -264,8 +266,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         }
     }
 
-    func buildMenu() {
-        let m = NSMenu(); m.delegate = self
+    func buildMenu() { populate(menu) }       // explicit refresh (also auto-runs on every open)
+    func populate(_ m: NSMenu) {
+        m.removeAllItems()
         header.isEnabled = false
         m.addItem(header)
         fdaItem.title = L.t("⚠︎ 授予完整磁碟取用權…", "⚠︎ Grant Full Disk Access…")
@@ -314,10 +317,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let ver = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? ""
         m.addItem(withTitle: L.t("關於 Configgy（v\(ver)）", "About Configgy (v\(ver))"), action: #selector(about), keyEquivalent: "").target = self
         m.addItem(withTitle: L.t("結束 Configgy", "Quit Configgy"), action: #selector(quit), keyEquivalent: "q").target = self
-        statusItem.menu = m
+        refreshHeader()
     }
 
-    func menuNeedsUpdate(_ menu: NSMenu) { refreshHeader() }
+    func menuNeedsUpdate(_ menu: NSMenu) { populate(menu) }   // always reflect current targets/language/state
     func refreshHeader() {
         fdaOK = engine.isTest ? true : canAccessBackup()
         fdaItem.isHidden = fdaOK
