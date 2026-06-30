@@ -22,6 +22,6 @@ final class BackdropView: NSVisualEffectView {
     }
     private func applyTint() {
         let dark = effectiveAppearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
-        tint.layer?.backgroundColor = NSColor.black.withAlphaComponent(dark ? 0.62 : 0.0).cgColor
+        tint.layer?.backgroundColor = NSColor.black.withAlphaComponent(dark ? 0.8 : 0.0).cgColor
     }
 }
