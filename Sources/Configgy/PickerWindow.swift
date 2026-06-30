@@ -35,6 +35,7 @@ final class PickerWindow: NSObject {
     private var checks: [String: NSButton] = [:]
     private var rowViews: [String: NSView] = [:]
     private var selectedId: String?
+    private var selectAllBtn: NSButton?
 
     static func chooseMany(title: String, prompt: String, items: [PickerRow], ok: String) -> Set<String>? {
         guard !items.isEmpty else { return nil }
@@ -87,6 +88,12 @@ final class PickerWindow: NSObject {
         cancel.autoresizingMask = [.minXMargin]; okB.autoresizingMask = [.minXMargin]
         bg.addSubview(cancel); bg.addSubview(okB)
 
+        if multi {
+            let sa = NSButton(title: L.t("全選", "Select All"), target: self, action: #selector(selectAllTapped))
+            sa.bezelStyle = .rounded; sa.frame = NSRect(x: 14, y: 14, width: 108, height: 32)
+            bg.addSubview(sa); selectAllBtn = sa
+        }
+
         win.center()
         NSApp.activate(ignoringOtherApps: true)
         let code = NSApp.runModal(for: win)
@@ -121,7 +128,7 @@ final class PickerWindow: NSObject {
         }
         if multi {
             let cb = NSButton(checkboxWithTitle: "", target: nil, action: nil)
-            cb.state = .on
+            cb.state = .off                       // don't pre-select for the user; use 全選 to select all
             cb.frame = NSRect(x: width - 12 - 34, y: (rowH - 6 - 20) / 2, width: 24, height: 20)
             row.addSubview(cb); checks[it.id] = cb
         }
@@ -140,6 +147,11 @@ final class PickerWindow: NSObject {
             selectedId = id
             rowViews[id]?.layer?.backgroundColor = NSColor.controlAccentColor.withAlphaComponent(0.16).cgColor
         }
+    }
+    @objc private func selectAllTapped() {
+        let turnOn = checks.values.contains { $0.state == .off }   // any unchecked → select all; else clear all
+        checks.values.forEach { $0.state = turnOn ? .on : .off }
+        selectAllBtn?.title = turnOn ? L.t("全不選", "Deselect All") : L.t("全選", "Select All")
     }
     @objc private func okTapped() { NSApp.stopModal(withCode: .OK) }
     @objc private func cancelTapped() { NSApp.stopModal(withCode: .cancel) }
