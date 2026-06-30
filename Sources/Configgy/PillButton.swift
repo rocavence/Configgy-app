@@ -40,6 +40,7 @@ final class PillButton: NSView {
         let H = UI.s(28), padH = UI.s(11), iconSz = UI.s(15), gap = UI.s(6)
         let lw = label.frame.width, lh = label.frame.height
         frame = NSRect(x: 0, y: 0, width: (padH + iconSz + gap + lw + padH).rounded(), height: H)
+        layer?.cornerRadius = H / 2                 // full capsule
         iconView.frame = NSRect(x: padH, y: (H - iconSz) / 2, width: iconSz, height: iconSz)
         label.frame = NSRect(x: padH + iconSz + gap, y: (H - lh) / 2, width: lw, height: lh)
         updateColors()

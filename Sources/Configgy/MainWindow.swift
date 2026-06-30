@@ -106,7 +106,7 @@ extension AppDelegate {
 
     private func makeMainRow(_ it: Entry, y: CGFloat, width: CGFloat, rowH: CGFloat) -> NSView {
         let row = NSView(frame: NSRect(x: UI.s(12), y: y, width: width - UI.s(24), height: rowH))
-        row.wantsLayer = true; row.layer?.cornerRadius = UI.s(9)
+        row.wantsLayer = true; row.layer?.cornerRadius = UI.s(13)
         row.layer?.backgroundColor = NSColor.gray.withAlphaComponent(0.12).cgColor
         row.autoresizingMask = [.width]
         let inner = width - UI.s(24)
