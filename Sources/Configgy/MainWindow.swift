@@ -181,6 +181,10 @@ extension AppDelegate {
             let sep = NSBox(frame: NSRect(x: pad, y: y, width: w - pad * 2, height: 1))
             sep.boxType = .separator; sep.autoresizingMask = [.minYMargin, .width]; host.addSubview(sep)
         }
+        // enlarge UI (manual, default off)
+        let swz = NSSwitch(); swz.state = Settings.load(engine.home).uiZoom ? .on : .off
+        swz.target = self; swz.action = #selector(settingsToggleZoom(_:)); swz.sizeToFit()
+        row(L.t("放大介面", "Enlarge UI"), L.t("較大的字體與按鈕（1.1×）", "larger text & buttons (1.1×)"), swz)
         // pause zen (only when enabled)
         if zenOn {
             let sw = NSSwitch(); sw.state = paused ? .on : .off; sw.target = self; sw.action = #selector(settingsTogglePause(_:)); sw.sizeToFit()
@@ -201,6 +205,12 @@ extension AppDelegate {
         let ver = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? ""
         let gh = PillButton(symbol: "arrow.up.forward.square", title: "GitHub"); gh.onClick = { [weak self] in self?.about() }
         row(L.t("關於 Configgy", "About Configgy"), "v\(ver)", gh)
+    }
+    @objc func settingsToggleZoom(_ s: NSSwitch) {
+        var st = Settings.load(engine.home); st.uiZoom = (s.state == .on); Settings.save(st, home: engine.home)
+        UI.scale = UI.compute()
+        mainWin?.close(); mainWin = nil; toolbarHost = nil; contentHost = nil; tabsView = nil   // rebuild at new scale
+        showMain()                               // reopen on the Settings page (mainSettings stays true)
     }
     @objc func settingsTogglePause(_ s: NSSwitch) { paused = (s.state == .on); buildMenu() }
     @objc func settingsToggleLogin(_ s: NSSwitch) {
