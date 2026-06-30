@@ -31,16 +31,27 @@ extension AppDelegate {
         bg.material = .underWindowBackground; bg.blendingMode = .behindWindow; bg.state = .active
         bg.autoresizingMask = [.width, .height]; win.contentView = bg
 
-        let headerH = UI.s(86)                    // top ~28pt is the (transparent) title strip with traffic lights
+        let headerH = UI.s(112)                   // title strip + big title + tabs row
         let content = NSView(frame: NSRect(x: 0, y: 0, width: w, height: h - headerH))
         content.autoresizingMask = [.width, .height]; bg.addSubview(content); contentHost = content
 
         let toolbar = NSView(frame: NSRect(x: 0, y: h - headerH, width: w, height: headerH))
         toolbar.autoresizingMask = [.width, .minYMargin]; bg.addSubview(toolbar); toolbarHost = toolbar
 
+        // big title + small version (left, below the traffic-light strip)
+        let title = NSTextField(labelWithString: "Configgy")
+        title.font = UI.font(22, .bold); title.sizeToFit()
+        title.setFrameOrigin(NSPoint(x: UI.s(22), y: h - UI.s(60)))
+        title.autoresizingMask = [.minYMargin]; bg.addSubview(title)
+        let ver = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? ""
+        let vlabel = NSTextField(labelWithString: "v\(ver)")
+        vlabel.font = UI.font(11); vlabel.textColor = .tertiaryLabelColor; vlabel.sizeToFit()
+        vlabel.setFrameOrigin(NSPoint(x: title.frame.maxX + UI.s(8), y: title.frame.minY + UI.s(5)))
+        vlabel.autoresizingMask = [.minYMargin]; bg.addSubview(vlabel)
+
         let tabs = CapsuleTabs(titles: [L.t("已備份保護", "Protected"), L.t("建議加入", "Suggestions")])
         tabs.onSelect = { [weak self] i in self?.mainTab = i; self?.mainSettings = false; self?.refreshMain() }
-        tabs.setFrameOrigin(NSPoint(x: UI.s(20), y: h - UI.s(60)))   // below the traffic-light strip
+        tabs.setFrameOrigin(NSPoint(x: UI.s(20), y: h - UI.s(102)))   // tabs row, just above the content
         tabs.autoresizingMask = [.maxXMargin, .minYMargin]
         bg.addSubview(tabs); tabsView = tabs       // added last → above the toolbar layer
 
@@ -56,7 +67,7 @@ extension AppDelegate {
 
         // right-aligned toolbar buttons (rightmost first)
         var tx = toolbar.bounds.width - UI.s(20)
-        let btnY = toolbar.bounds.height - UI.s(56)   // align with the tabs row
+        let btnY = UI.s(14)                            // tabs row sits near the bottom of the header host
         func tool(_ sym: String, _ t: String, _ act: @escaping () -> Void) {
             let b = PillButton(symbol: sym, title: t); b.onClick = act
             tx -= b.frame.width
@@ -126,42 +137,15 @@ extension AppDelegate {
     }
 
     private func makeMainRow(_ it: Entry, y: CGFloat, width: CGFloat, rowH: CGFloat) -> NSView {
-        let row = NSView(frame: NSRect(x: UI.s(12), y: y, width: width - UI.s(24), height: rowH))
-        row.wantsLayer = true; row.layer?.cornerRadius = UI.s(13)
-        row.layer?.backgroundColor = NSColor.gray.withAlphaComponent(0.12).cgColor
-        row.autoresizingMask = [.width]
-        let inner = width - UI.s(24)
-        let iconX = UI.s(16), isz = UI.s(44)
-        let iv = NSImageView(frame: NSRect(x: iconX, y: (rowH - isz) / 2, width: isz, height: isz))
-        iv.image = it.icon; iv.imageScaling = .scaleProportionallyUpOrDown; row.addSubview(iv)
-
-        var x = inner - UI.s(14)
-        let id = it.id
-        func place(_ sym: String, _ t: String, hover: NSColor?, weak: Bool, _ act: @escaping () -> Void) {
-            let b = PillButton(symbol: sym, title: t, hoverTint: hover, weak: weak); b.onClick = act
-            x -= b.frame.width
-            b.setFrameOrigin(NSPoint(x: x, y: (rowH - b.frame.height) / 2))
-            b.autoresizingMask = [.minXMargin]; row.addSubview(b); x -= UI.s(6)
-        }
+        let row = RowView(entry: it, y: y, width: width, rowH: rowH)
+        row.onRefresh = { [weak self] in self?.refreshMain() }
         if it.suggestion {
-            place("plus.circle.fill", L.t("加入", "Add"), hover: .controlAccentColor, weak: false) { [weak self] in self?.addEntry(id) }
+            row.onAdd = { [weak self] in self?.addEntry(it.id) }
         } else {
-            place("icloud.and.arrow.up", L.t("備份", "Back Up"), hover: .systemGreen, weak: false) { [weak self] in self?.backupEntry(id) }
-            place("clock.arrow.circlepath", L.t("還原", "Restore"), hover: .systemOrange, weak: false) { [weak self] in self?.restoreEntry(id) }
-            if id.hasPrefix("t:") { place("trash", L.t("移除", "Remove"), hover: .systemRed, weak: true) { [weak self] in self?.removeEntry(id) } }
-            else if id == "zen" { place("pause.circle", L.t("停用", "Disable"), hover: .systemRed, weak: true) { [weak self] in self?.removeEntry(id) } }
+            row.onBackup = { [weak self] done in self?.performBackup(it.id, done) }
+            row.onRestore = { [weak self] done in self?.performRestore(it.id, done) }
+            row.onRemove = { [weak self] done in self?.performRemove(it.id, done) }
         }
-
-        let nameX = iconX + isz + UI.s(12)
-        let textW = max(x - UI.s(8) - nameX, UI.s(80))
-        let name = NSTextField(labelWithString: it.name)
-        name.font = UI.font(13, .semibold); name.lineBreakMode = .byTruncatingTail
-        name.frame = NSRect(x: nameX, y: rowH / 2 + UI.s(2), width: textW, height: UI.s(17))
-        name.autoresizingMask = [.width]; row.addSubview(name)
-        let detail = NSTextField(labelWithString: it.detail)
-        detail.font = UI.font(11); detail.textColor = .secondaryLabelColor; detail.lineBreakMode = .byTruncatingTail
-        detail.frame = NSRect(x: nameX, y: rowH / 2 - UI.s(17), width: textW, height: UI.s(14))
-        detail.autoresizingMask = [.width]; row.addSubview(detail)
         return row
     }
 
@@ -244,51 +228,59 @@ extension AppDelegate {
         if s.contains(configLabel) { return 1 }
         return 0
     }
-    private func removeEntry(_ id: String) {
+    // confirm + perform removal on a bg queue; completion(removed) on main so the row can crumble
+    func performRemove(_ id: String, _ done: @escaping (Bool) -> Void) {
+        q.async {
+            let removed = self.doRemove(id)
+            DispatchQueue.main.async { done(removed) }
+        }
+    }
+    private func doRemove(_ id: String) -> Bool {
         if id == "zen" {
             let n = engine.listZips().count
             let c = confirmRemoval(configLabel: L.t("只停用", "Disable"), deleteLabel: L.t("停用並刪備份", "Disable & delete"),
                 body: L.t("停用 Zen 備份？\\n\\n• 只停用：不再自動備份，保留雲端 \(n) 份\\n• 停用並刪備份：同時刪掉雲端 Zen 備份（不可復原）",
                           "Disable Zen backup?\\n\\n• Disable: stop auto-backup, keep the \(n) backups\\n• Disable & delete: also remove the cloud Zen backups (irreversible)"))
-            if c == 0 { return }
-            var st = Settings.load(engine.home); st.zenEnabled = false; Settings.save(st, home: engine.home); zenOn = false
-            if c == 2 { fdaOK = engine.isTest ? true : canAccessBackup(); if requireFDA() { try? FileManager.default.removeItem(atPath: engine.dropboxDir) } }
-            buildMenu(); refreshMain(); return
+            if c == 0 { return false }
+            var st = Settings.load(engine.home); st.zenEnabled = false; Settings.save(st, home: engine.home)
+            DispatchQueue.main.async { self.zenOn = false }
+            if c == 2, engine.isTest || canAccessBackup() { try? FileManager.default.removeItem(atPath: engine.dropboxDir) }
+            return true
         }
-        guard id.hasPrefix("t:"), let d = TargetStore.load(engine.home).first(where: { $0.id == String(id.dropFirst(2)) }) else { return }
+        guard id.hasPrefix("t:"), let d = TargetStore.load(engine.home).first(where: { $0.id == String(id.dropFirst(2)) }) else { return false }
         let g = GenericBackup(home: engine.home, def: d)
         let n = g.listSnapshots().count
         let c = confirmRemoval(configLabel: L.t("只移除設定", "Config only"), deleteLabel: L.t("連備份一起刪", "Delete backups too"),
             body: L.t("移除「\(d.name)」？\\n\\n• 只移除設定：從清單拿掉，保留雲端 \(n) 份備份\\n• 連備份一起刪：同時刪掉雲端備份（不可復原）",
                       "Remove \"\(d.name)\"?\\n\\n• Config only: drop from the list, keep the \(n) cloud backups\\n• Delete backups too: also remove the cloud backups (irreversible)"))
-        if c == 0 { return }
+        if c == 0 { return false }
         TargetStore.remove(d.id, home: engine.home)
-        if c == 2 { fdaOK = engine.isTest ? true : canAccessBackup(); if requireFDA() { try? FileManager.default.removeItem(atPath: g.dir) } }
-        buildMenu(); refreshMain()
+        if c == 2, engine.isTest || canAccessBackup() { try? FileManager.default.removeItem(atPath: g.dir) }
+        return true
     }
 
-    private func backupEntry(_ id: String) {
+    // perform backup on a bg queue; completion(success) on main (no refresh — the row drives the post-animation refresh)
+    func performBackup(_ id: String, _ done: @escaping (Bool) -> Void) {
         fdaOK = engine.isTest ? true : canAccessBackup()
-        guard requireFDA() else { return }
+        guard requireFDA() else { done(false); return }
         let op: (() -> BackupResult)?
         if id == "claude" { op = { self.claude.backup() } }
         else if id == "zen" { op = { self.engine.manualBackup() } }
         else if id.hasPrefix("t:"), let d = TargetStore.load(engine.home).first(where: { $0.id == String(id.dropFirst(2)) }) { op = { GenericBackup(home: self.engine.home, def: d).backup() } }
         else { op = nil }
-        guard let op else { return }
-        runOp { let r = op(); DispatchQueue.main.async { self.refreshMain() }; return self.outcome(r) }
+        guard let op else { done(false); return }
+        q.async { let r = op(); DispatchQueue.main.async { if case .done = r { done(true) } else { done(false) } } }
     }
-    private func restoreEntry(_ id: String) {
+    func performRestore(_ id: String, _ done: @escaping (Bool) -> Void) {
         fdaOK = engine.isTest ? true : canAccessBackup()
-        guard requireFDA() else { return }
-        runOp {
+        guard requireFDA() else { done(false); return }
+        q.async {
             let o: OpOutcome
             if id == "claude" { o = self.claudeRestoreFlow() }
             else if id == "zen" { o = self.interactiveRestore(autoDismiss: false) }
             else if id.hasPrefix("t:"), let d = TargetStore.load(self.engine.home).first(where: { $0.id == String(id.dropFirst(2)) }) { o = self.genericRestoreFlow(d) }
             else { o = .neutral }
-            DispatchQueue.main.async { self.refreshMain() }
-            return o
+            DispatchQueue.main.async { if case .success = o { done(true) } else { done(false) } }
         }
     }
     private func addEntry(_ id: String) {
