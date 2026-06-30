@@ -117,6 +117,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
     func applicationDidFinishLaunching(_ note: Notification) {
         engine = Engine()
         L.lang = L.resolve(Settings.load(engine.home).language)
+        applyTheme()
         if !engine.isTest && !Engine.backupRootResolved(home: engine.home) { chooseBackupLocation(initial: true) }
         claude = ClaudeBackup(home: engine.home)        // created after the folder prompt so it picks up the choice
         zenOn = Settings.load(engine.home).zenEnabled && engine.hasZen

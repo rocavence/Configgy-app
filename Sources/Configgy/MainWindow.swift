@@ -195,6 +195,10 @@ extension AppDelegate {
             let sep = NSBox(frame: NSRect(x: pad, y: y, width: w - pad * 2, height: 1))
             sep.boxType = .separator; sep.autoresizingMask = [.minYMargin, .width]; host.addSubview(sep)
         }
+        // theme: follow system / light / dark
+        let themeSeg = NSSegmentedControl(labels: [L.t("跟隨系統", "System"), L.t("淺色", "Light"), L.t("深色", "Dark")], trackingMode: .selectOne, target: self, action: #selector(settingsTheme(_:)))
+        let th = Settings.load(engine.home).theme; themeSeg.selectedSegment = (th == "light") ? 1 : (th == "dark" ? 2 : 0)
+        themeSeg.sizeToFit(); row(L.t("主題", "Theme"), "", themeSeg)
         // enlarge UI (manual, default off)
         let swz = NSSwitch(); swz.state = Settings.load(engine.home).uiZoom ? .on : .off
         swz.target = self; swz.action = #selector(settingsToggleZoom(_:)); swz.sizeToFit()
@@ -230,6 +234,18 @@ extension AppDelegate {
             self.mainWin = nil; self.toolbarHost = nil; self.contentHost = nil; self.tabsView = nil
             self.showMain()                      // stays on the Settings page (mainSettings remains true)
         }
+    }
+    func applyTheme() {
+        switch Settings.load(engine.home).theme {
+        case "dark": NSApp.appearance = NSAppearance(named: .darkAqua)
+        case "light": NSApp.appearance = NSAppearance(named: .aqua)
+        default: NSApp.appearance = nil          // follow system
+        }
+    }
+    @objc func settingsTheme(_ s: NSSegmentedControl) {
+        let v = ["system", "light", "dark"][s.selectedSegment]
+        var st = Settings.load(engine.home); st.theme = (v == "system") ? nil : v; Settings.save(st, home: engine.home)
+        applyTheme(); refreshMain()
     }
     @objc func settingsTogglePause(_ s: NSSwitch) { paused = (s.state == .on); buildMenu() }
     @objc func settingsToggleLogin(_ s: NSSwitch) {

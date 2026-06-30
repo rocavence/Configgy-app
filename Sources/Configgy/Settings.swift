@@ -6,6 +6,7 @@ struct ConfiggySettings: Codable {
     var language: String? = nil     // "zh" | "en" | nil (follow system)
     var zenEnabled: Bool = false    // Zen is opt-in (a suggested target); only Claude is on by default
     var uiZoom: Bool = false        // enlarge the UI 1.1x (manual, default off)
+    var theme: String? = nil        // "dark" | "light" | nil (follow system)
 }
 
 // Detect the local sync folder of each cloud provider; returns the Configgy
