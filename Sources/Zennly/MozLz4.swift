@@ -12,6 +12,22 @@ enum MozLz4 {
         return lz4dec(Array(b[12...]), destLen)
     }
 
+    // Encode raw bytes into a mozLz4 container as a single all-literal LZ4 block.
+    // Zen reads it fine and re-compresses on its next save. (Mirrors the Node tool.)
+    static func encode(_ json: Data) -> Data {
+        let input = [UInt8](json)
+        var out = [UInt8]()
+        out.append(contentsOf: Array("mozLz40\0".utf8))            // 8-byte magic
+        let n = UInt32(input.count)
+        out.append(UInt8(n & 0xff)); out.append(UInt8((n >> 8) & 0xff))
+        out.append(UInt8((n >> 16) & 0xff)); out.append(UInt8((n >> 24) & 0xff))
+        let L = input.count
+        out.append(UInt8((L >= 15 ? 15 : L) << 4))                 // token: literal length in high nibble
+        if L >= 15 { var r = L - 15; while r >= 255 { out.append(255); r -= 255 }; out.append(UInt8(r)) }
+        out.append(contentsOf: input)
+        return Data(out)
+    }
+
     private static func lz4dec(_ src: [UInt8], _ destLen: Int) -> Data {
         var dst = [UInt8](repeating: 0, count: max(destLen, 0))
         var s = 0, d = 0

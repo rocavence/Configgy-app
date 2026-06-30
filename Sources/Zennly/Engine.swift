@@ -283,6 +283,91 @@ final class Engine {
         return .done(zip)
     }
 
+    // ---- per-workspace restore: list a backup's workspaces, merge selected ones into live ----
+    func decodeSessionsInZip(_ zip: String) -> [String: Any]? {
+        let (_, d) = sh("/usr/bin/unzip", ["-p", dropboxDir + "/" + zip, "snapshot/profile/zen-sessions.jsonlz4"])
+        guard let raw = MozLz4.decode(d) else { return nil }
+        return (try? JSONSerialization.jsonObject(with: raw)) as? [String: Any]
+    }
+    func workspacesIn(_ zip: String) -> [(uuid: String, label: String)] {
+        guard let j = decodeSessionsInZip(zip) else { return [] }
+        let spaces = (j["spaces"] as? [[String: Any]]) ?? []
+        return spaces.compactMap { s in
+            guard let u = s["uuid"] as? String, !u.isEmpty else { return nil }
+            let lbl = "\((s["icon"] as? String) ?? "") \((s["name"] as? String) ?? "")".trimmingCharacters(in: .whitespaces)
+            return (u, lbl.isEmpty ? u : lbl)
+        }
+    }
+
+    @discardableResult
+    func restoreWorkspaces(_ zip: String, uuids: Set<String>) -> RestoreResult {
+        let zpath = dropboxDir + "/" + zip
+        guard fm.fileExists(atPath: zpath), !uuids.isEmpty, let bj = decodeSessionsInZip(zip) else { return .failed }
+        let bSpaces = (bj["spaces"] as? [[String: Any]]) ?? []
+        let bTabs = (bj["tabs"] as? [[String: Any]]) ?? []
+        let selSpaces = bSpaces.filter { uuids.contains(($0["uuid"] as? String) ?? "") }
+        let selTabs = bTabs.filter { uuids.contains(($0["zenWorkspace"] as? String) ?? "") }
+        guard !selSpaces.isEmpty else { return .failed }
+
+        try? fm.createDirectory(atPath: stateDir, withIntermediateDirectories: true)
+        let lock = stateDir + "/restoring.lock"
+        try? zip.write(toFile: lock, atomically: true, encoding: .utf8)
+        defer { try? fm.removeItem(atPath: lock) }
+        if zenRunning() {
+            sh("/usr/bin/osascript", ["-e", "tell application \"Zen\" to quit"])
+            for _ in 0..<40 where zenRunning() { Thread.sleep(forTimeInterval: 0.5) }
+        }
+
+        let livePath = profileDir + "/zen-sessions.jsonlz4"
+        guard let lraw = fm.contents(atPath: livePath).flatMap({ MozLz4.decode($0) }),
+              var lj = (try? JSONSerialization.jsonObject(with: lraw)) as? [String: Any] else { return .failed }
+        var lSpaces = (lj["spaces"] as? [[String: Any]]) ?? []
+        var lTabs = (lj["tabs"] as? [[String: Any]]) ?? []
+        lSpaces.removeAll { uuids.contains(($0["uuid"] as? String) ?? "") }   // replace if already present
+        lTabs.removeAll { uuids.contains(($0["zenWorkspace"] as? String) ?? "") }
+        lSpaces.append(contentsOf: selSpaces)
+        lTabs.append(contentsOf: selTabs)
+        lj["spaces"] = lSpaces; lj["tabs"] = lTabs
+
+        let bk = profileDir + "/pre-restore-backup-\(stamp())"
+        try? fm.createDirectory(atPath: bk, withIntermediateDirectories: true)
+        sh("/bin/cp", ["-p", livePath, bk + "/zen-sessions.jsonlz4"])
+        if fm.fileExists(atPath: profileDir + "/containers.json") { sh("/bin/cp", ["-p", profileDir + "/containers.json", bk + "/containers.json"]) }
+
+        guard let outJSON = try? JSONSerialization.data(withJSONObject: lj) else { return .failed }
+        do { try MozLz4.encode(outJSON).write(to: URL(fileURLWithPath: livePath)) } catch { return .failed }
+
+        var usedIds = Set<Int>()
+        for s in selSpaces { if let c = s["containerTabId"] as? Int, c != 0 { usedIds.insert(c) } }
+        for t in selTabs { if let c = t["userContextId"] as? Int, c != 0 { usedIds.insert(c) } }
+        mergeContainers(zpath: zpath, usedIds: usedIds)
+
+        var st = readState(); st.dismissedZip = newestZip(); writeState(st)
+        let names = selSpaces.map { "\((($0["icon"] as? String) ?? "")) \((($0["name"] as? String) ?? ""))".trimmingCharacters(in: .whitespaces) }
+        log("✓ 已套用工作區：\(names.joined(separator: " · "))（來自 \(zip)；舊 session 備份在 \((bk as NSString).lastPathComponent)）")
+        if !isTest { sh("/usr/bin/open", ["-a", "Zen"]) }
+        return .done(zip)
+    }
+
+    private func mergeContainers(zpath: String, usedIds: Set<Int>) {
+        guard !usedIds.isEmpty else { return }
+        let (_, bc) = sh("/usr/bin/unzip", ["-p", zpath, "snapshot/profile/containers.json"])
+        guard let bcj = (try? JSONSerialization.jsonObject(with: bc)) as? [String: Any],
+              let bIdents = bcj["identities"] as? [[String: Any]] else { return }
+        let cpath = profileDir + "/containers.json"
+        guard let lcj0 = fm.contents(atPath: cpath).flatMap({ try? JSONSerialization.jsonObject(with: $0) }) as? [String: Any]
+        else { return }
+        var lcj = lcj0
+        var lIdents = (lcj["identities"] as? [[String: Any]]) ?? []
+        let existing = Set(lIdents.compactMap { $0["userContextId"] as? Int })
+        var added = false
+        for id in bIdents {
+            if let c = id["userContextId"] as? Int, usedIds.contains(c), !existing.contains(c) { lIdents.append(id); added = true }
+        }
+        if added { lcj["identities"] = lIdents
+            if let d = try? JSONSerialization.data(withJSONObject: lcj) { try? d.write(to: URL(fileURLWithPath: cpath)) } }
+    }
+
     // ---------- picker (native dialog via osascript; works headless & from menubar) ----------
     func label(_ zip: String) -> String {
         guard let m = zipMeta(zip) else { return zip }
@@ -310,15 +395,27 @@ final class Engine {
         }
         guard let zip = map[chosen] else { return .cancelled }
 
-        // second step: choose what to apply.
-        let scopeDialog = "display dialog \"要怎麼套用這份備份？\\n\\n• 完整還原：整個 Zen 設定都換成這份\\n• 只套用工作區：只還原工作區＋分頁（容器/綁定），其餘設定不動\" buttons {\"取消\", \"只套用工作區\", \"完整還原\"} cancel button \"取消\" default button \"完整還原\" with title \"Zennly · 還原\""
+        // second step: full restore, or pick specific workspace(s) to merge in.
+        let scopeDialog = "display dialog \"要怎麼套用這份備份？\\n\\n• 完整還原：整個 Zen 設定都換成這份\\n• 選擇工作區：只把你挑的工作區（＋分頁/容器）併進目前的 Zen，其餘不動\" buttons {\"取消\", \"選擇工作區\", \"完整還原\"} cancel button \"取消\" default button \"完整還原\" with title \"Zennly · 還原\""
         let (code, sd) = sh("/usr/bin/osascript", ["-e", scopeDialog])
-        if code != 0 {                       // 取消
-            if autoDismiss { var st = readState(); st.dismissedZip = newestZip(); writeState(st) }
-            return .cancelled
+        func dismiss() { if autoDismiss { var st = readState(); st.dismissedZip = newestZip(); writeState(st) } }
+        if code != 0 { dismiss(); return .cancelled }                       // 取消
+        if !(String(data: sd, encoding: .utf8) ?? "").contains("選擇工作區") {
+            return restore(zip, scope: .full)
         }
-        let scope: RestoreScope = (String(data: sd, encoding: .utf8) ?? "").contains("只套用工作區") ? .workspace : .full
-        return restore(zip, scope: scope)
+        // pick which workspace(s) to bring in
+        let wss = workspacesIn(zip)
+        if wss.isEmpty { log("這份備份讀不到工作區。"); return .failed }
+        var wmap: [String: String] = [:]
+        let wlabels = wss.map { w -> String in wmap[w.label] = w.uuid; return w.label }
+        let wListLit = "{" + wlabels.map { "\"" + $0.replacingOccurrences(of: "\"", with: "\\\"") + "\"" }.joined(separator: ", ") + "}"
+        let wscript = "choose from list \(wListLit) with title \"Zennly · 選擇工作區\" with prompt \"要還原哪些工作區？（可多選；會併進目前的 Zen）\" with multiple selections allowed OK button name \"還原\" cancel button name \"取消\""
+        let (_, wd) = sh("/usr/bin/osascript", ["-e", wscript])
+        let picked = String(data: wd, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? "false"
+        if picked.isEmpty || picked == "false" { dismiss(); return .cancelled }
+        let uuids = Set(picked.components(separatedBy: ", ").compactMap { wmap[$0] })
+        if uuids.isEmpty { return .cancelled }
+        return restoreWorkspaces(zip, uuids: uuids)
     }
 
     func log(_ m: String) { FileHandle.standardError.write(Data("[zennly] \(m)\n".utf8)) }

@@ -20,10 +20,14 @@ if args.count > 1 {
             e.log("Zen     : \(e.zenRunning() ? "RUNNING" : "closed")")
             e.log("目前本機對應備份 : \(e.readState().currentZip ?? "(無)")")
             e.log("雲端最新備份     : \(e.newestZip() ?? "(無)")")
+        case "workspaces":
+            if args.count > 2 { for w in e.workspacesIn(args[2]) { print("\(w.uuid)\t\(w.label)") } }
+            else { print("Usage: Zennly workspaces <zip>") }
         case "restore":
-            if args.count > 2 {
-                let scope: RestoreScope = (args.count > 3 && args[3] == "workspace") ? .workspace : .full
-                e.restore(args[2], scope: scope)
+            if args.count >= 5, args[3] == "ws" {
+                e.restoreWorkspaces(args[2], uuids: Set(args[4...]))
+            } else if args.count > 2 {
+                e.restore(args[2])
             } else { e.promptRestore() }
         default:
             print("Usage: Zennly [backup|list|status|restore [zip]]")
