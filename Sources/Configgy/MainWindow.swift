@@ -31,7 +31,7 @@ extension AppDelegate {
         bg.material = .underWindowBackground; bg.blendingMode = .behindWindow; bg.state = .active
         bg.autoresizingMask = [.width, .height]; win.contentView = bg
 
-        let headerH = UI.s(120)                   // title strip + big title + tabs row
+        let headerH = UI.s(132)                   // title strip + big title + whitespace + tabs row
         let content = NSView(frame: NSRect(x: 0, y: 0, width: w, height: h - headerH))
         content.autoresizingMask = [.width, .height]; bg.addSubview(content); contentHost = content
 
@@ -41,7 +41,7 @@ extension AppDelegate {
         // big title + small version (left, below the traffic-light strip)
         let title = NSTextField(labelWithString: "Configgy")
         title.font = UI.font(30, .bold); title.sizeToFit()
-        title.setFrameOrigin(NSPoint(x: UI.s(22), y: h - UI.s(74)))
+        title.setFrameOrigin(NSPoint(x: UI.s(22), y: h - UI.s(72)))
         title.autoresizingMask = [.minYMargin]; bg.addSubview(title)
         let ver = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? ""
         let vlabel = NSTextField(labelWithString: "v\(ver)")
@@ -51,7 +51,7 @@ extension AppDelegate {
 
         let tabs = CapsuleTabs(titles: [L.t("已備份保護", "Protected"), L.t("建議加入", "Suggestions")])
         tabs.onSelect = { [weak self] i in self?.mainTab = i; self?.mainSettings = false; self?.refreshMain() }
-        tabs.setFrameOrigin(NSPoint(x: UI.s(20), y: h - UI.s(110)))   // tabs row, just above the content
+        tabs.setFrameOrigin(NSPoint(x: UI.s(20), y: h - UI.s(120)))   // tabs row, with whitespace below the title
         tabs.autoresizingMask = [.maxXMargin, .minYMargin]
         bg.addSubview(tabs); tabsView = tabs       // added last → above the toolbar layer
 
@@ -67,7 +67,7 @@ extension AppDelegate {
 
         // right-aligned toolbar buttons (rightmost first)
         var tx = toolbar.bounds.width - UI.s(20)
-        let btnY = UI.s(12)                            // align with the tabs row (bottom of the header host)
+        let btnY = UI.s(14)                            // align with the tabs row (bottom of the header host)
         func tool(_ sym: String, _ t: String, _ act: @escaping () -> Void) {
             let b = PillButton(symbol: sym, title: t); b.onClick = act
             tx -= b.frame.width
