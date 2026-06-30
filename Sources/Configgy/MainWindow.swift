@@ -9,6 +9,7 @@ extension AppDelegate {
 
     @objc func showMain() {
         if mainWin == nil { buildMainWindow() }
+        adoptExistingBackups()                      // scan the backup folder; surface anything already backed up
         refreshMain()
         NSApp.setActivationPolicy(.regular)
         mainWin?.makeKeyAndOrderFront(nil)
@@ -27,7 +28,7 @@ extension AppDelegate {
         win.isMovableByWindowBackground = true
         win.isReleasedWhenClosed = false          // we manage its lifetime; closing must not free it underneath an event
         win.minSize = NSSize(width: UI.s(640), height: UI.s(420))
-        let bg = NSVisualEffectView(frame: NSRect(x: 0, y: 0, width: w, height: h))
+        let bg = BackdropView(frame: NSRect(x: 0, y: 0, width: w, height: h))
         bg.material = .underWindowBackground; bg.blendingMode = .behindWindow; bg.state = .active
         bg.autoresizingMask = [.width, .height]; win.contentView = bg
 
@@ -107,6 +108,30 @@ extension AppDelegate {
         for it in items { doc.addSubview(makeMainRow(it, y: y, width: scroll.frame.width, rowH: rowH)); y += rowH + UI.s(6) }
         doc.frame = NSRect(x: 0, y: 0, width: scroll.frame.width, height: max(y + UI.s(6), 1))
         scroll.documentView = doc; host.addSubview(scroll)
+    }
+
+    // scan Apps/Configgy for folders that already contain backups, and surface them
+    // under 已備份保護 (re-adopt Zen + targets even if not in local settings/targets.json).
+    private func adoptExistingBackups() {
+        let fm = FileManager.default
+        func hasZips(_ dir: String) -> Bool { (try? fm.contentsOfDirectory(atPath: dir))?.contains { $0.hasSuffix(".zip") } ?? false }
+        let base = Engine.dropboxBase(home: engine.home)
+        if engine.hasZen && !Settings.load(engine.home).zenEnabled && hasZips(base + "/zen") {
+            var s = Settings.load(engine.home); s.zenEnabled = true; Settings.save(s, home: engine.home); zenOn = true
+        }
+        guard let ids = try? fm.contentsOfDirectory(atPath: base + "/targets") else { return }
+        var defs = TargetStore.load(engine.home)
+        let have = Set(defs.map { $0.id })
+        var changed = false
+        for id in ids where !have.contains(id) && hasZips(base + "/targets/" + id) {
+            if let cat = TargetStore.catalog.first(where: { $0.id == id }) {
+                defs.append(TargetDef(id: cat.id, name: cat.name, paths: cat.paths, excludes: cat.excludes, app: cat.app))
+            } else {
+                defs.append(TargetDef(id: id, name: id, paths: []))   // restore-only (paths unknown locally)
+            }
+            changed = true
+        }
+        if changed { TargetStore.save(defs, home: engine.home) }
     }
 
     private func entries() -> [Entry] {
