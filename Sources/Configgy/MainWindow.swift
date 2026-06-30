@@ -37,8 +37,8 @@ extension AppDelegate {
 
         let tabs = CapsuleTabs(titles: [L.t("已備份保護", "Protected"), L.t("建議加入", "Suggestions")])
         tabs.onSelect = { [weak self] i in self?.mainTab = i; self?.mainSettings = false; self?.refreshMain() }
-        tabs.setFrameOrigin(NSPoint(x: (w - tabs.frame.width) / 2, y: h - UI.s(46)))
-        tabs.autoresizingMask = [.minXMargin, .maxXMargin, .minYMargin]
+        tabs.setFrameOrigin(NSPoint(x: UI.s(20), y: h - UI.s(46)))
+        tabs.autoresizingMask = [.maxXMargin, .minYMargin]
         bg.addSubview(tabs); tabsView = tabs       // added last → above the toolbar layer
 
         win.delegate = self
@@ -196,7 +196,7 @@ extension AppDelegate {
         seg.sizeToFit(); row(L.t("語言", "Language"), "", seg)
         // backup location
         let locBtn = PillButton(symbol: "externaldrive", title: L.t("變更…", "Change…")); locBtn.onClick = { [weak self] in self?.changeBackupLocation(); self?.refreshMain() }
-        row(L.t("備份位置", "Backup location"), engine.dropboxDir, locBtn)
+        row(L.t("備份位置", "Backup location"), Engine.dropboxBase(home: engine.home), locBtn)   // Configgy root (holds zen/claude/targets)
         // about
         let ver = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? ""
         let gh = PillButton(symbol: "arrow.up.forward.square", title: "GitHub"); gh.onClick = { [weak self] in self?.about() }

@@ -225,8 +225,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
         m.addItem(fdaItem)                       // visibility set in refreshHeader
         m.addItem(withTitle: L.t("打開 Configgy 視窗…", "Open Configgy…"), action: #selector(showMain), keyEquivalent: "o").target = self
         m.addItem(.separator())
+        let ver = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? ""
+        m.addItem(withTitle: L.t("關於 Configgy（v\(ver)）", "About Configgy (v\(ver))"), action: #selector(about), keyEquivalent: "").target = self
         m.addItem(withTitle: L.t("結束 Configgy", "Quit Configgy"), action: #selector(quit), keyEquivalent: "q").target = self
-        refreshHeader()                          // settings now live in the window's Settings page
+        refreshHeader()                          // other settings live in the window's Settings page
     }
 
     func menuNeedsUpdate(_ menu: NSMenu) { populate(menu) }   // always reflect current targets/language/state
