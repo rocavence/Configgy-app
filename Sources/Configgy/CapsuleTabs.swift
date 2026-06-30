@@ -14,9 +14,7 @@ final class CapsuleTabs: NSView {
         wantsLayer = true
         let H = UI.s(32), padH = UI.s(18), gap = UI.s(4), inset = UI.s(3)
         layer?.cornerRadius = H / 2
-        layer?.backgroundColor = NSColor.white.withAlphaComponent(0.07).cgColor
         chip.wantsLayer = true; chip.layer?.cornerRadius = (H - inset * 2) / 2
-        chip.layer?.backgroundColor = NSColor.white.withAlphaComponent(0.16).cgColor
         addSubview(chip)
 
         var x = inset
@@ -42,13 +40,17 @@ final class CapsuleTabs: NSView {
         guard let l = g.view as? NSTextField else { return }
         select(l.tag); onSelect?(l.tag)
     }
+    override func viewDidChangeEffectiveAppearance() { super.viewDidChangeEffectiveAppearance(); applyColors() }
+    private func applyColors() {
+        let dark = effectiveAppearance.isDark
+        layer?.backgroundColor = Palette.tabTrack(dark).cgColor
+        chip.layer?.backgroundColor = Palette.tabChip(dark).cgColor
+        let onChip: NSColor = dark ? .labelColor : .labelColor   // dark text reads on the light chip; white text on dark chip
+        for (j, l) in labels.enumerated() { l.textColor = (j == selected && !chip.isHidden) ? onChip : .secondaryLabelColor }
+    }
     func select(_ i: Int) {
-        guard i >= 0, i < segFrames.count else {        // -1 = none selected (e.g. Settings page)
-            chip.isHidden = true
-            for l in labels { l.textColor = .secondaryLabelColor }
-            return
-        }
+        if i < 0 || i >= segFrames.count { chip.isHidden = true; applyColors(); return }   // none (Settings)
         selected = i; chip.isHidden = false; chip.frame = segFrames[i]
-        for (j, l) in labels.enumerated() { l.textColor = (j == i) ? .labelColor : .secondaryLabelColor }
+        applyColors()
     }
 }

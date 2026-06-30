@@ -21,7 +21,8 @@ final class BackdropView: NSVisualEffectView {
         applyTint()
     }
     private func applyTint() {
-        let dark = effectiveAppearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
-        tint.layer?.backgroundColor = NSColor.black.withAlphaComponent(dark ? 0.8 : 0.0).cgColor
+        let dark = effectiveAppearance.isDark
+        // dark: deep black; light: a clean light wash (Finder-like, still slightly translucent)
+        tint.layer?.backgroundColor = (dark ? NSColor.black.withAlphaComponent(0.8) : NSColor.white.withAlphaComponent(0.55)).cgColor
     }
 }

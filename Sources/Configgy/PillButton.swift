@@ -72,8 +72,10 @@ final class PillButton: NSView {
         pressed = false; updateColors()
         if inside { onClick?() }
     }
+    override func viewDidChangeEffectiveAppearance() { super.viewDidChangeEffectiveAppearance(); updateColors() }
     private func updateColors() {
         if locked { return }
+        let dark = effectiveAppearance.isDark
         let active = hovering || pressed
         let content: NSColor = active ? hoverTint : (weak ? .tertiaryLabelColor : .labelColor)
         iconView.contentTintColor = content
@@ -85,8 +87,8 @@ final class PillButton: NSView {
             layer?.backgroundColor = hoverTint.withAlphaComponent(pressed ? 0.24 : 0.16).cgColor
             layer?.borderColor = hoverTint.withAlphaComponent(0.34).cgColor
         } else {
-            layer?.backgroundColor = NSColor.white.withAlphaComponent(0.08).cgColor
-            layer?.borderColor = NSColor.white.withAlphaComponent(0.12).cgColor
+            layer?.backgroundColor = Palette.pillFill(dark).cgColor
+            layer?.borderColor = Palette.pillBorder(dark).cgColor
         }
     }
 }

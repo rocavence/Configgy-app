@@ -25,8 +25,8 @@ final class RowView: NSView {
         wantsLayer = true
         layer?.cornerRadius = radius
         layer?.masksToBounds = true                  // clip everything to the rounded rect (fixes corner glitch)
-        layer?.backgroundColor = NSColor.gray.withAlphaComponent(0.12).cgColor
         autoresizingMask = [.width]
+        applyRowColors()
 
         let iconX = UI.s(16), isz = UI.s(44)
         let iv = NSImageView(frame: NSRect(x: iconX, y: (rowH - isz) / 2, width: isz, height: isz))
@@ -81,12 +81,19 @@ final class RowView: NSView {
         let t = NSTrackingArea(rect: bounds, options: [.mouseEnteredAndExited, .activeAlways], owner: self)
         addTrackingArea(t); tracking = t
     }
-    override func mouseEntered(with e: NSEvent) { highlight(true) }
-    override func mouseExited(with e: NSEvent) { highlight(false) }
-    private func highlight(_ on: Bool) {
-        layer?.borderWidth = on ? UI.s(1) : 0           // thin hairline highlight
-        layer?.borderColor = on ? NSColor.white.withAlphaComponent(0.45).cgColor : NSColor.clear.cgColor
-        layer?.backgroundColor = NSColor.gray.withAlphaComponent(on ? 0.17 : 0.12).cgColor
+    private var hovering = false
+    override func mouseEntered(with e: NSEvent) { hovering = true; applyRowColors() }
+    override func mouseExited(with e: NSEvent) { hovering = false; applyRowColors() }
+    override func viewDidChangeEffectiveAppearance() { super.viewDidChangeEffectiveAppearance(); applyRowColors() }
+    private func applyRowColors() {
+        let dark = effectiveAppearance.isDark
+        layer?.backgroundColor = (hovering ? Palette.hoverFill(dark) : Palette.card(dark)).cgColor
+        if hovering {
+            layer?.borderWidth = UI.s(1); layer?.borderColor = Palette.hoverBorder(dark).cgColor
+        } else {
+            layer?.borderWidth = dark ? 0 : UI.s(1)     // light: subtle separating hairline
+            layer?.borderColor = Palette.hairline(dark).cgColor
+        }
     }
 
     // ---- flowing-light progress bar (indeterminate) along the bottom ----
