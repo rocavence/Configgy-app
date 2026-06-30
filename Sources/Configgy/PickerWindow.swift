@@ -24,7 +24,7 @@ enum Icons {
 
 struct PickerRow { let id: String; let title: String; let subtitle: String; let icon: NSImage }
 
-private final class FlippedView: NSView { override var isFlipped: Bool { true } }
+final class FlippedView: NSView { override var isFlipped: Bool { true } }
 
 // A clean native list window (Mole-style): icon + title + subtitle rows, with a
 // soft material background. Multi-select uses checkboxes; single-select uses row

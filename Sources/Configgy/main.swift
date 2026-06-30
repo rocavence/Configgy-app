@@ -427,21 +427,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         guard let id = (sender as? NSMenuItem)?.representedObject as? String else { return nil }
         return TargetStore.load(engine.home).first { $0.id == id }
     }
-    @objc func targetBackup(_ sender: NSMenuItem) {
-        guard requireFDA(), let d = defFor(sender) else { return }
-        runOp { self.outcome(GenericBackup(home: self.engine.home, def: d).backup()) }
-    }
-    @objc func targetRestore(_ sender: NSMenuItem) {
-        guard requireFDA(), let d = defFor(sender) else { return }
-        runOp { self.genericRestoreFlow(d) }
-    }
-    func genericRestoreFlow(_ d: TargetDef) -> OpOutcome {
+    @objc func targetBackup(_ sender: NSMenuItem) { openTargetWindow(sender) }
+    @objc func targetRestore(_ sender: NSMenuItem) { openTargetWindow(sender) }
+    func openTargetWindow(_ sender: NSMenuItem) {        // rich window for both backup & restore
+        guard let d = defFor(sender) else { return }
         let g = GenericBackup(home: engine.home, def: d)
-        let snaps = Array(g.listSnapshots().reversed())
-        if snaps.isEmpty { info(L.t("「\(d.name)」還沒有備份。", "No backup for \"\(d.name)\" yet.")); return .neutral }
-        guard let zip = pickSnapshot(snaps, label: { g.label($0) }, title: "Configgy · \(d.name)", app: d.app) else { return .neutral }
-        if !confirmChanges(g.previewRestore(zip), title: "Configgy · \(d.name)", what: d.name) { return .neutral }
-        return outcome(g.restore(zip))
+        let icon = Icons.app(d.app)
+        TargetWindow.present(
+            title: d.name, icon: icon, subtitle: d.paths.joined(separator: "  ·  "),
+            access: { self.engine.isTest ? true : self.canAccessBackup() },
+            snapshots: { g.listSnapshots().reversed().map { PickerRow(id: $0, title: g.label($0), subtitle: "", icon: icon) } },
+            backup: { g.backup() },
+            preview: { g.previewRestore($0) },
+            confirm: { self.confirmChanges($0, title: d.name, what: d.name) },
+            restore: { g.restore($0) })
     }
     @objc func removeTargetMenu() {
         let defs = TargetStore.load(engine.home)
