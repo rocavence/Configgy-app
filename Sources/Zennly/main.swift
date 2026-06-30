@@ -33,6 +33,9 @@ if args.count > 1 {
 }
 
 // ===================== GUI menubar mode =====================
+enum IconState { case idle, working, success, failure }
+enum OpOutcome { case success, failure, neutral }
+
 final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     var statusItem: NSStatusItem!
     var engine: Engine!
@@ -41,6 +44,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     var wasRunning = false
     var busy = false
     var paused = false
+    var idleRevert: DispatchWorkItem?
     let header = NSMenuItem(title: "Zennly", action: nil, keyEquivalent: "")
     let pauseItem = NSMenuItem(title: "暫停自動備份/還原", action: #selector(togglePause), keyEquivalent: "")
 
@@ -51,10 +55,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             a.runModal(); NSApp.terminate(nil); return
         }
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
-        if let b = statusItem.button {
-            b.image = NSImage(systemSymbolName: "externaldrive.badge.timemachine", accessibilityDescription: "Zennly")
-            b.image?.isTemplate = true
-        }
+        statusItem.button?.wantsLayer = true
+        setIcon(.idle)
         pauseItem.target = self
         buildMenu()
         wasRunning = engine.zenRunning()
@@ -87,6 +89,68 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         pauseItem.state = paused ? .on : .off
     }
 
+    // ---- menubar icon state + animation ----
+    func symbolImage(_ name: String, color: NSColor? = nil) -> NSImage? {
+        guard let base = NSImage(systemSymbolName: name, accessibilityDescription: "Zennly") else { return nil }
+        if let color {
+            let img = base.withSymbolConfiguration(NSImage.SymbolConfiguration(paletteColors: [color]))
+            img?.isTemplate = false
+            return img
+        }
+        base.isTemplate = true
+        return base
+    }
+    func setIcon(_ s: IconState) {
+        guard let btn = statusItem?.button else { return }
+        idleRevert?.cancel()
+        btn.layer?.removeAnimation(forKey: "pulse")
+        switch s {
+        case .idle:
+            btn.image = symbolImage("externaldrive.badge.timemachine")
+        case .working:
+            btn.image = symbolImage("arrow.triangle.2.circlepath")
+            let a = CABasicAnimation(keyPath: "opacity")
+            a.fromValue = 1.0; a.toValue = 0.3; a.duration = 0.55
+            a.autoreverses = true; a.repeatCount = .infinity
+            btn.layer?.add(a, forKey: "pulse")
+        case .success:
+            btn.image = symbolImage("checkmark.circle.fill", color: .systemGreen)
+            scheduleIdle(after: 1.8)
+        case .failure:
+            btn.image = symbolImage("exclamationmark.triangle.fill", color: .systemRed)
+            scheduleIdle(after: 2.6)
+        }
+    }
+    func scheduleIdle(after t: TimeInterval) {
+        let w = DispatchWorkItem { [weak self] in self?.setIcon(.idle) }
+        idleRevert = w
+        DispatchQueue.main.asyncAfter(deadline: .now() + t, execute: w)
+    }
+    func outcome(_ r: BackupResult) -> OpOutcome {
+        switch r { case .done: return .success; case .failed: return .failure; case .skipped: return .neutral }
+    }
+    func outcome(_ r: RestoreResult) -> OpOutcome {
+        switch r { case .done: return .success; case .failed: return .failure; case .cancelled: return .neutral }
+    }
+    // run an engine op off the main thread; animate working → success/failure/idle.
+    func runOp(_ op: @escaping () -> OpOutcome) {
+        if busy { return }
+        busy = true
+        setIcon(.working); refreshHeader()
+        q.async {
+            let o = op()
+            DispatchQueue.main.async {
+                self.busy = false
+                switch o {
+                case .success: self.setIcon(.success)
+                case .failure: self.setIcon(.failure)
+                case .neutral: self.setIcon(.idle)
+                }
+                self.refreshHeader()
+            }
+        }
+    }
+
     // ---- watch loop ----
     func tick() {
         if paused || busy { return }
@@ -94,22 +158,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         if now && !wasRunning {                                   // OPEN edge
             let newest = engine.newestZip(); let st = engine.readState()
             if let nz = newest, nz != st.currentZip, nz != st.dismissedZip {
-                busy = true
-                q.async { Thread.sleep(forTimeInterval: 2); self.engine.promptRestore(autoDismiss: true)
-                    DispatchQueue.main.async { self.busy = false } }
+                runOp { Thread.sleep(forTimeInterval: 2); return self.outcome(self.engine.promptRestore(autoDismiss: true)) }
             }
         } else if !now && wasRunning {                            // QUIT edge
             if !FileManager.default.fileExists(atPath: engine.stateDir + "/restoring.lock") {
-                busy = true
-                q.async { self.engine.backup(); DispatchQueue.main.async { self.busy = false } }
+                runOp { self.outcome(self.engine.backup()) }
             }
         }
         wasRunning = now
     }
 
     // ---- actions ----
-    @objc func doBackup() { busy = true; q.async { self.engine.backup(force: true); DispatchQueue.main.async { self.busy = false } } }
-    @objc func doRestore() { busy = true; q.async { self.engine.promptRestore(); DispatchQueue.main.async { self.busy = false } } }
+    @objc func doBackup() { runOp { self.outcome(self.engine.manualBackup()) } }
+    @objc func doRestore() { runOp { self.outcome(self.engine.promptRestore()) } }
     @objc func openDropbox() {
         try? FileManager.default.createDirectory(atPath: engine.dropboxDir, withIntermediateDirectories: true)
         NSWorkspace.shared.open(URL(fileURLWithPath: engine.dropboxDir))

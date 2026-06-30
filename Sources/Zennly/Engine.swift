@@ -11,6 +11,9 @@ struct State: Codable {
     var lastBackupHash: String?; var currentZip: String?; var dismissedZip: String?
 }
 
+enum BackupResult { case done(String), skipped, failed }
+enum RestoreResult { case done(String), cancelled, failed }
+
 // All of Zennly's backup/restore logic. Pure Swift + a few shell-outs to
 // cp/zip/unzip/pgrep/osascript/open — same approach the menubar app and the CLI share.
 final class Engine {
@@ -30,7 +33,7 @@ final class Engine {
                  "zen-live-folders.jsonlz4", "containers.json", "xulstore.json", "search.json.mozlz4",
                  "handlers.json", "extensions.json", "addonStartup.json.lz4", "times.json",
                  "sessionCheckpoints.json", "compatibility.ini"]
-    let dirs = ["chrome", "extensions", "zen-sessions-backup", "sessionstore-backups"]
+    let dirs = ["chrome", "extensions", "browser-extension-data", "zen-sessions-backup", "sessionstore-backups"]
 
     let fm = FileManager.default
 
@@ -173,12 +176,25 @@ final class Engine {
     }
 
     // ---------- backup ----------
+    // Manual "Backup now": Zen must be closed for files to be finalized, so offer
+    // to close it first instead of silently skipping.
     @discardableResult
-    func backup(force: Bool = false) -> String? {
-        if zenRunning() { log("Zen 還開著，略過備份。"); return nil }
+    func manualBackup() -> BackupResult {
+        if zenRunning() {
+            let dialog = "display dialog \"Zen 還開著。備份需要 Zen 完全關閉（設定檔關閉時才寫定）。要關閉 Zen 並備份嗎？\" buttons {\"取消\", \"關閉並備份\"} default button \"關閉並備份\" with title \"Zennly\" with icon note"
+            if sh("/usr/bin/osascript", ["-e", dialog]).0 != 0 { return .skipped }   // cancelled
+            sh("/usr/bin/osascript", ["-e", "tell application \"Zen\" to quit"])
+            for _ in 0..<40 where zenRunning() { Thread.sleep(forTimeInterval: 0.5) }
+        }
+        return backup(force: true)
+    }
+
+    @discardableResult
+    func backup(force: Bool = false) -> BackupResult {
+        if zenRunning() { log("Zen 還開著，略過備份。"); return .skipped }
         let hash = profileHash()
         var st = readState()
-        if !force, st.lastBackupHash == hash { log("設定沒變，略過重複備份。"); return nil }
+        if !force, st.lastBackupHash == hash { log("設定沒變，略過重複備份。"); return .skipped }
 
         try? fm.createDirectory(atPath: dropboxDir, withIntermediateDirectories: true)
         let ts = stamp()
@@ -201,7 +217,7 @@ final class Engine {
         try? fm.removeItem(atPath: tmp)
         if code != 0 || !fm.fileExists(atPath: out) {
             log("✗ 打包/寫入失敗（Dropbox 權限？需要 Full Disk Access）。")
-            return nil
+            return .failed
         }
 
         // prune
@@ -212,13 +228,14 @@ final class Engine {
         writeState(st)
         let tail = summary.map { "  [\($0.workspaces.joined(separator: " · ")) / \($0.tabs) 分頁]" } ?? ""
         log("✓ 已備份 → \(name)\(tail)")
-        return name
+        return .done(name)
     }
 
     // ---------- restore ----------
-    func restore(_ zip: String) {
+    @discardableResult
+    func restore(_ zip: String) -> RestoreResult {
         let zpath = dropboxDir + "/" + zip
-        guard fm.fileExists(atPath: zpath) else { log("找不到備份：\(zip)"); return }
+        guard fm.fileExists(atPath: zpath) else { log("找不到備份：\(zip)"); return .failed }
         try? fm.createDirectory(atPath: stateDir, withIntermediateDirectories: true)
         let lock = stateDir + "/restoring.lock"
         try? zip.write(toFile: lock, atomically: true, encoding: .utf8)
@@ -233,7 +250,7 @@ final class Engine {
         try? fm.createDirectory(atPath: tmp, withIntermediateDirectories: true)
         sh("/usr/bin/unzip", ["-qo", zpath, "-d", tmp])
         let src = tmp + "/snapshot/profile"
-        guard fm.fileExists(atPath: src) else { log("備份內容損壞（找不到 profile/）"); return }
+        guard fm.fileExists(atPath: src) else { log("備份內容損壞（找不到 profile/）"); return .failed }
 
         let bk = profileDir + "/pre-restore-backup-\(stamp())"
         try? fm.createDirectory(atPath: bk, withIntermediateDirectories: true)
@@ -249,6 +266,7 @@ final class Engine {
         writeState(st)
         log("✓ 已還原 \(zip)（舊設定備份在 \((bk as NSString).lastPathComponent)）")
         if !isTest { log("重新開啟 Zen…"); sh("/usr/bin/open", ["-a", "Zen"]) }
+        return .done(zip)
     }
 
     // ---------- picker (native dialog via osascript; works headless & from menubar) ----------
@@ -261,11 +279,11 @@ final class Engine {
         let tail = m.summary.map { "\($0.workspaces.joined(separator: " · ")) · \($0.tabs)分頁/\($0.essentials)essentials" } ?? ""
         return "\(when)  ·  \(m.host)  ·  \(tail)"
     }
-    // returns the zip the user chose (and restores it), or nil if cancelled/none.
+    // shows the picker and restores the chosen zip.
     @discardableResult
-    func promptRestore(autoDismiss: Bool = false) -> String? {
+    func promptRestore(autoDismiss: Bool = false) -> RestoreResult {
         let zips = listZips().reversed().map { $0 }   // newest first
-        if zips.isEmpty { return nil }
+        if zips.isEmpty { return .cancelled }
         var map: [String: String] = [:]
         let labels = zips.map { z -> String in let l = label(z); map[l] = z; return l }
         let listLit = "{" + labels.map { "\"" + $0.replacingOccurrences(of: "\"", with: "\\\"") + "\"" }.joined(separator: ", ") + "}"
@@ -274,11 +292,10 @@ final class Engine {
         let chosen = String(data: d, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? "false"
         if chosen.isEmpty || chosen == "false" {
             if autoDismiss { var st = readState(); st.dismissedZip = newestZip(); writeState(st) }
-            return nil
+            return .cancelled
         }
-        guard let zip = map[chosen] else { return nil }
-        restore(zip)
-        return zip
+        guard let zip = map[chosen] else { return .cancelled }
+        return restore(zip)
     }
 
     func log(_ m: String) { FileHandle.standardError.write(Data("[zennly] \(m)\n".utf8)) }

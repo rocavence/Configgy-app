@@ -29,8 +29,8 @@ let squircle = CGPath(roundedRect: rect, cornerWidth: squircleCorner, cornerHeig
 ctx.saveGState()
 ctx.addPath(squircle); ctx.clip()
 let bg = CGGradient(colorsSpace: space, colors: [
-    NSColor(red: 0.34, green: 0.36, blue: 0.62, alpha: 1).cgColor,   // soft indigo
-    NSColor(red: 0.11, green: 0.13, blue: 0.28, alpha: 1).cgColor    // deep night
+    NSColor(red: 0.17, green: 0.17, blue: 0.19, alpha: 1).cgColor,   // charcoal
+    NSColor(red: 0.02, green: 0.02, blue: 0.03, alpha: 1).cgColor    // near-black (Zen-like)
 ] as CFArray, locations: [0, 1])!
 ctx.drawLinearGradient(bg, start: CGPoint(x: rect.minX, y: rect.maxY),
                        end: CGPoint(x: rect.maxX, y: rect.minY), options: [])
