@@ -44,7 +44,13 @@ enum TargetStore {
         DiscoveryItem(id: "iina", name: "IINA", paths: ["~/Library/Preferences/com.colliderli.iina.plist"], excludes: [], note: ""),
         DiscoveryItem(id: "input-source-pro", name: "Input Source Pro", paths: ["~/Library/Preferences/com.runjuu.Input-Source-Pro.plist"], excludes: [], note: ""),
         DiscoveryItem(id: "rectangle", name: "Rectangle", paths: ["~/Library/Preferences/com.knollsoft.Rectangle.plist"], excludes: [], note: ""),
-        DiscoveryItem(id: "mac-mouse-fix", name: "Mac Mouse Fix", paths: ["~/Library/Preferences/com.nuebling.mac-mouse-fix.plist"], excludes: [], note: ""),
+        DiscoveryItem(id: "mac-mouse-fix", name: "Mac Mouse Fix", paths: ["~/Library/Preferences/com.nuebling.mac-mouse-fix.plist", "~/Library/Preferences/com.nuebling.mac-mouse-fix.helper.plist"], excludes: [], note: ""),
+        DiscoveryItem(id: "motrix", name: "Motrix", paths: ["~/Library/Preferences/app.motrix.native.plist"], excludes: [], note: ""),
+        DiscoveryItem(id: "mole", name: "Mole", paths: ["~/Library/Preferences/com.tw93.MoleApp.plist"], excludes: [], note: ""),
+        DiscoveryItem(id: "otty", name: "Otty", paths: ["~/Library/Preferences/io.appmakes.otty.plist"], excludes: [], note: ""),
+        DiscoveryItem(id: "subler", name: "Subler", paths: ["~/Library/Preferences/org.galad.Subler.plist"], excludes: [], note: ""),
+        DiscoveryItem(id: "upscayl", name: "Upscayl", paths: ["~/Library/Preferences/org.upscayl.Upscayl.plist"], excludes: [], note: ""),
+        DiscoveryItem(id: "gamely", name: "Gamely", paths: ["~/Library/Preferences/com.gamely.app.plist"], excludes: [], note: ""),
     ]
     static func discover(_ home: String) -> [DiscoveryItem] {
         let fm = FileManager.default

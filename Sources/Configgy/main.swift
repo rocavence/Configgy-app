@@ -498,8 +498,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         for id in sel { TargetStore.remove(id, home: engine.home) }
         buildMenu()
     }
-    @objc func addTarget() {
-        guard requireFDA() else { return }
+    @objc func addTarget() {                 // defining a target writes only to app support — no FDA needed
         let panel = NSOpenPanel()
         panel.canChooseFiles = true; panel.canChooseDirectories = true; panel.allowsMultipleSelection = true
         panel.message = L.t("選擇要備份的設定檔或資料夾（可多選）", "Choose config files or folders to back up (multiple allowed)")
@@ -525,8 +524,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let j = String(cleaned).split(separator: "-").joined(separator: "-")
         return j.isEmpty ? "target-\(abs(s.hashValue) % 100000)" : j
     }
-    @objc func discoverTargets() {
-        guard requireFDA() else { return }
+    @objc func discoverTargets() {           // scanning/adding needs no FDA; only the backup itself does
         let items = TargetStore.discover(engine.home)
         if items.isEmpty { info(L.t("沒找到可備份的常見設定。", "No common configs found to back up.")); return }
         let picks = items.map { (uuid: $0.id, label: $0.note.isEmpty ? $0.name : "\($0.name) · \($0.note)") }
