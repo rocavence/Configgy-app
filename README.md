@@ -6,8 +6,11 @@
 
 <p align="center">
   A tiny macOS <b>menubar app</b> that backs up &amp; restores your local config
-  across devices — currently <b>Zen Browser</b> and <b>Claude Code</b>.
+  across devices — currently <b>Zen Browser</b> and <b>Claude Code</b>, plus any
+  custom folder.
 </p>
+
+<p align="center"><b>English</b> · <a href="README.zh-Hant.md">繁體中文</a></p>
 
 <p align="center">
   Native Swift (AppKit, <code>LSUIElement</code>) · no dependencies · backups land in

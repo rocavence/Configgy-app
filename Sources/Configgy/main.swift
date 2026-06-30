@@ -1,4 +1,5 @@
 import AppKit
+import ServiceManagement
 
 // ===================== CLI mode =====================
 // `Configgy backup|list|status|restore [zip]` runs headless and exits.
@@ -89,22 +90,22 @@ if args.count > 1 {
 enum IconState { case idle, working, success, failure }
 enum OpOutcome { case success, failure, neutral }
 
-// Native checkbox window for choosing which workspaces to restore. Must run on main.
+// Native multi-select checkbox window. Must run on main. Generic — used both for
+// choosing Zen workspaces and for choosing which configs to add as backup targets.
 final class ModalResponder: NSObject {
     @objc func ok() { NSApp.stopModal(withCode: .OK) }
     @objc func cancel() { NSApp.stopModal(withCode: .cancel) }
 }
-enum WorkspacePicker {
-    static func run(_ items: [(uuid: String, label: String)]) -> Set<String>? {
-        let pad: CGFloat = 20, rowH: CGFloat = 30, width: CGFloat = 420
-        let listH = CGFloat(items.count) * rowH
-        let h = listH + 112
+enum CheckboxPicker {
+    static func run(_ items: [(uuid: String, label: String)], title: String, prompt: String, ok okTitle: String) -> Set<String>? {
+        let pad: CGFloat = 20, rowH: CGFloat = 30, width: CGFloat = 460
+        let h = CGFloat(items.count) * rowH + 112
         let panel = NSPanel(contentRect: NSRect(x: 0, y: 0, width: width, height: h),
                             styleMask: [.titled], backing: .buffered, defer: false)
-        panel.title = "Configgy"
+        panel.title = title
         guard let content = panel.contentView else { return nil }
 
-        let head = NSTextField(labelWithString: "勾選要併進目前 Zen 的工作區：")
+        let head = NSTextField(labelWithString: prompt)
         head.font = .boldSystemFont(ofSize: 13)
         head.frame = NSRect(x: pad, y: h - 44, width: width - 2 * pad, height: 20)
         content.addSubview(head)
@@ -118,10 +119,10 @@ enum WorkspacePicker {
         }
 
         let resp = ModalResponder()
-        let cancel = NSButton(title: "取消", target: resp, action: #selector(ModalResponder.cancel))
+        let cancel = NSButton(title: L.t("取消", "Cancel"), target: resp, action: #selector(ModalResponder.cancel))
         cancel.bezelStyle = .rounded; cancel.keyEquivalent = "\u{1b}"
         cancel.frame = NSRect(x: width - 204, y: 16, width: 92, height: 30)
-        let ok = NSButton(title: "還原", target: resp, action: #selector(ModalResponder.ok))
+        let ok = NSButton(title: okTitle, target: resp, action: #selector(ModalResponder.ok))
         ok.bezelStyle = .rounded; ok.keyEquivalent = "\r"
         ok.frame = NSRect(x: width - 106, y: 16, width: 92, height: 30)
         content.addSubview(cancel); content.addSubview(ok)
@@ -147,20 +148,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     var busy = false
     var paused = false
     var fdaOK = true
-    var welcomeShown = false
     var idleRevert: DispatchWorkItem?
     let header = NSMenuItem(title: "Configgy", action: nil, keyEquivalent: "")
-    let fdaItem = NSMenuItem(title: "⚠︎ 授予完整磁碟取用權…", action: #selector(openFDAGuide), keyEquivalent: "")
-    let pauseItem = NSMenuItem(title: "暫停 Zen 自動備份/還原", action: #selector(togglePause), keyEquivalent: "")
+    let fdaItem = NSMenuItem(title: "", action: #selector(openFDAGuide), keyEquivalent: "")
+    let pauseItem = NSMenuItem(title: "", action: #selector(togglePause), keyEquivalent: "")
 
     func applicationDidFinishLaunching(_ note: Notification) {
         do { engine = try Engine() }
         catch {
-            let a = NSAlert(); a.messageText = "Configgy 無法啟動"; a.informativeText = error.localizedDescription
+            let a = NSAlert(); a.messageText = "Configgy"; a.informativeText = error.localizedDescription
             a.runModal(); NSApp.terminate(nil); return
         }
-        claude = ClaudeBackup(home: engine.home)
-        fdaOK = engine.isTest ? true : hasFullDiskAccess()
+        L.lang = L.resolve(Settings.load(engine.home).language)
+        if !engine.isTest && !Engine.backupRootResolved(home: engine.home) { promptBackupFolder() }
+        claude = ClaudeBackup(home: engine.home)        // created after the folder prompt so it picks up the choice
+        fdaOK = engine.isTest ? true : canAccessBackup()
         engine.migrateLegacy()                          // one-time: old Apps/zennly → Apps/Configgy/zen
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         statusItem.button?.wantsLayer = true
@@ -173,22 +175,43 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         if !fdaOK { showWelcome(firstRun: true) }       // macOS never auto-prompts for FDA — guide the user
     }
 
-    // TCC.db is readable only with Full Disk Access — the standard FDA probe.
-    func hasFullDiskAccess() -> Bool {
-        let tcc = engine.home + "/Library/Application Support/com.apple.TCC/TCC.db"
-        guard let fh = FileHandle(forReadingAtPath: tcc) else { return false }
-        defer { try? fh.close() }
-        return (try? fh.read(upToCount: 1)) != nil
+    // can we actually write into the backup folder? (Dropbox needs Full Disk Access;
+    // a user-chosen plain folder just needs to be writable.)
+    func canAccessBackup() -> Bool {
+        let base = (engine.dropboxDir as NSString).deletingLastPathComponent   // Apps/Configgy
+        try? FileManager.default.createDirectory(atPath: base, withIntermediateDirectories: true)
+        let probe = base + "/.configgy-probe"
+        let ok = (try? "ok".write(toFile: probe, atomically: true, encoding: .utf8)) != nil
+        try? FileManager.default.removeItem(atPath: probe)
+        return ok
+    }
+
+    // Dropbox not found → let the user pick a folder to store backups in.
+    func promptBackupFolder() {
+        let a = NSAlert()
+        a.messageText = L.t("找不到 Dropbox", "Dropbox not found")
+        a.informativeText = L.t("Configgy 預設備份到 Dropbox/Apps/Configgy，但這台找不到 Dropbox。請選一個資料夾存放備份。",
+                                "Configgy backs up to Dropbox/Apps/Configgy by default, but no Dropbox was found here. Choose a folder to store backups.")
+        a.addButton(withTitle: L.t("選擇資料夾…", "Choose Folder…"))
+        a.addButton(withTitle: L.t("稍後", "Later"))
+        NSApp.activate(ignoringOtherApps: true)
+        guard a.runModal() == .alertFirstButtonReturn else { return }
+        let panel = NSOpenPanel()
+        panel.canChooseFiles = false; panel.canChooseDirectories = true; panel.canCreateDirectories = true
+        panel.message = L.t("選擇備份存放資料夾", "Choose a folder to store backups")
+        panel.directoryURL = URL(fileURLWithPath: engine.home)
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+        var s = Settings.load(engine.home); s.backupBase = url.path + "/Configgy"; Settings.save(s, home: engine.home)
     }
 
     @objc func openFDAGuide() { showWelcome(firstRun: false) }
 
     func showWelcome(firstRun: Bool) {
-        if firstRun { welcomeShown = true }
         let a = NSAlert()
         a.icon = NSApp.applicationIconImage
-        a.messageText = firstRun ? "歡迎使用 Configgy" : "需要完整磁碟取用權"
-        a.informativeText = """
+        a.messageText = firstRun ? L.t("歡迎使用 Configgy", "Welcome to Configgy")
+                                 : L.t("需要完整磁碟取用權", "Full Disk Access needed")
+        a.informativeText = L.t("""
         Configgy 會把你的 Zen 與 Claude 設定備份到 Dropbox，並能跨裝置還原。
 
         它需要「完整磁碟取用權」才能讀寫 Dropbox 資料夾。macOS 不會自動跳出請求，請手動授權：
@@ -198,9 +221,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         3. 打開它的開關，選「結束並重新打開」
 
         授權並重開後就會開始自動備份。
-        """
-        a.addButton(withTitle: "打開設定並標出 App")
-        a.addButton(withTitle: firstRun ? "稍後" : "關閉")
+        """, """
+        Configgy backs up your Zen & Claude config to Dropbox and restores it across devices.
+
+        It needs Full Disk Access to read/write the Dropbox folder. macOS never prompts for this — grant it manually:
+
+        1. Click "Open Settings & Reveal App".
+        2. In the Full Disk Access list, click +, choose the revealed Configgy.app.
+        3. Toggle it on, then choose "Quit & Reopen".
+
+        After granting and reopening, automatic backups begin.
+        """)
+        a.addButton(withTitle: L.t("打開設定並標出 App", "Open Settings & Reveal App"))
+        a.addButton(withTitle: firstRun ? L.t("稍後", "Later") : L.t("關閉", "Close"))
         NSApp.activate(ignoringOtherApps: true)
         if a.runModal() == .alertFirstButtonReturn {
             let appPath = Bundle.main.bundlePath
@@ -215,46 +248,62 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let m = NSMenu(); m.delegate = self
         header.isEnabled = false
         m.addItem(header)
+        fdaItem.title = L.t("⚠︎ 授予完整磁碟取用權…", "⚠︎ Grant Full Disk Access…")
         fdaItem.isHidden = fdaOK
         m.addItem(fdaItem)
         m.addItem(.separator())
-        m.addItem(withTitle: "備份 Zen（立即）", action: #selector(doBackup), keyEquivalent: "b").target = self
-        m.addItem(withTitle: "還原 Zen…（可選工作區）", action: #selector(doRestore), keyEquivalent: "r").target = self
+        m.addItem(withTitle: L.t("備份 Zen（立即）", "Back Up Zen Now"), action: #selector(doBackup), keyEquivalent: "b").target = self
+        m.addItem(withTitle: L.t("還原 Zen…（可選工作區）", "Restore Zen…"), action: #selector(doRestore), keyEquivalent: "r").target = self
         m.addItem(.separator())
-        m.addItem(withTitle: "備份 Claude 設定", action: #selector(doClaudeBackup), keyEquivalent: "").target = self
-        m.addItem(withTitle: "還原 Claude 設定", action: #selector(doClaudeRestore), keyEquivalent: "").target = self
+        m.addItem(withTitle: L.t("備份 Claude 設定", "Back Up Claude Config"), action: #selector(doClaudeBackup), keyEquivalent: "").target = self
+        m.addItem(withTitle: L.t("還原 Claude 設定", "Restore Claude Config"), action: #selector(doClaudeRestore), keyEquivalent: "").target = self
         m.addItem(.separator())
-        // user-defined / discovered targets, each with a backup/restore submenu
+        // user-defined / discovered targets, each its own versioned backup
         for d in TargetStore.load(engine.home) {
             let sub = NSMenu()
-            let b = sub.addItem(withTitle: "立即備份", action: #selector(targetBackup(_:)), keyEquivalent: ""); b.target = self; b.representedObject = d.id
-            let r = sub.addItem(withTitle: "還原…", action: #selector(targetRestore(_:)), keyEquivalent: ""); r.target = self; r.representedObject = d.id
+            let b = sub.addItem(withTitle: L.t("立即備份", "Back Up Now"), action: #selector(targetBackup(_:)), keyEquivalent: ""); b.target = self; b.representedObject = d.id
+            let r = sub.addItem(withTitle: L.t("還原…", "Restore…"), action: #selector(targetRestore(_:)), keyEquivalent: ""); r.target = self; r.representedObject = d.id
             sub.addItem(.separator())
-            let x = sub.addItem(withTitle: "移除此目標", action: #selector(targetRemove(_:)), keyEquivalent: ""); x.target = self; x.representedObject = d.id
+            let x = sub.addItem(withTitle: L.t("移除此目標", "Remove This Target"), action: #selector(targetRemove(_:)), keyEquivalent: ""); x.target = self; x.representedObject = d.id
             let item = NSMenuItem(title: d.name, action: nil, keyEquivalent: ""); item.submenu = sub
             m.addItem(item)
         }
-        m.addItem(withTitle: "新增備份目標…", action: #selector(addTarget), keyEquivalent: "").target = self
-        m.addItem(withTitle: "掃描建議的設定…", action: #selector(discoverTargets), keyEquivalent: "").target = self
+        m.addItem(withTitle: L.t("新增自訂備份資料夾…", "Add Custom Backup Folder…"), action: #selector(addTarget), keyEquivalent: "").target = self
+        m.addItem(withTitle: L.t("掃描建議的設定…", "Scan for Configs…"), action: #selector(discoverTargets), keyEquivalent: "").target = self
         m.addItem(.separator())
+        pauseItem.title = L.t("暫停 Zen 自動備份/還原", "Pause Zen Auto Backup/Restore")
         m.addItem(pauseItem)
-        m.addItem(withTitle: "開啟備份資料夾", action: #selector(openDropbox), keyEquivalent: "").target = self
+        m.addItem(withTitle: L.t("開啟備份資料夾", "Open Backup Folder"), action: #selector(openDropbox), keyEquivalent: "").target = self
+        // launch at login (default off)
+        let launch = m.addItem(withTitle: L.t("開機自動啟動", "Launch at Login"), action: #selector(toggleLaunchAtLogin), keyEquivalent: "")
+        launch.target = self
+        launch.state = (SMAppService.mainApp.status == .enabled) ? .on : .off
+        // language submenu
+        let langSub = NSMenu()
+        let cur = Settings.load(engine.home).language
+        for (code, name) in [("system", L.t("跟隨系統", "System")), ("zh", "中文"), ("en", "English")] {
+            let it = langSub.addItem(withTitle: name, action: #selector(setLanguage(_:)), keyEquivalent: "")
+            it.target = self; it.representedObject = code
+            it.state = ((cur ?? "system") == code) ? .on : .off
+        }
+        let langItem = NSMenuItem(title: L.t("語言", "Language"), action: nil, keyEquivalent: ""); langItem.submenu = langSub
+        m.addItem(langItem)
         m.addItem(.separator())
-        m.addItem(withTitle: "結束 Configgy", action: #selector(quit), keyEquivalent: "q").target = self
+        let ver = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? ""
+        m.addItem(withTitle: L.t("關於 Configgy（v\(ver)）", "About Configgy (v\(ver))"), action: #selector(about), keyEquivalent: "").target = self
+        m.addItem(withTitle: L.t("結束 Configgy", "Quit Configgy"), action: #selector(quit), keyEquivalent: "q").target = self
         statusItem.menu = m
     }
 
     func menuNeedsUpdate(_ menu: NSMenu) { refreshHeader() }
     func refreshHeader() {
-        fdaOK = engine.isTest ? true : hasFullDiskAccess()
+        fdaOK = engine.isTest ? true : canAccessBackup()
         fdaItem.isHidden = fdaOK
         let st = engine.readState()
-        let cur = st.currentZip.map { engine.label($0) } ?? "尚未備份"
-        header.title = (fdaOK ? (engine.zenRunning() ? "● Zen 開啟中" : "○ Zen 已關閉")
-                              : "⚠︎ 尚未授予磁碟取用權") + (busy ? "（處理中…）" : "")
-        let sub = NSMenuItem(title: "目前：\(cur)", action: nil, keyEquivalent: ""); sub.isEnabled = false
-        // refresh the secondary info line (index 1 is the separator after header; keep header only)
-        header.toolTip = "目前對應備份：\(cur)\nDropbox：\(engine.dropboxDir)"
+        let cur = st.currentZip.map { engine.label($0) } ?? L.t("尚未備份", "no backup yet")
+        header.title = (fdaOK ? (engine.zenRunning() ? L.t("● Zen 開啟中", "● Zen running") : L.t("○ Zen 已關閉", "○ Zen closed"))
+                              : L.t("⚠︎ 尚未授予磁碟取用權", "⚠︎ no backup access")) + (busy ? L.t("（處理中…）", " (working…)") : "")
+        header.toolTip = L.t("目前對應備份：\(cur)\n備份位置：\(engine.dropboxDir)", "Current backup: \(cur)\nLocation: \(engine.dropboxDir)")
         pauseItem.state = paused ? .on : .off
     }
 
@@ -329,23 +378,30 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         var map: [String: String] = [:]
         let labels = zips.map { z -> String in let l = engine.label(z); map[l] = z; return l }
         let listLit = "{" + labels.map { "\"" + $0.replacingOccurrences(of: "\"", with: "\\\"") + "\"" }.joined(separator: ", ") + "}"
-        let pick = "choose from list \(listLit) with title \"Configgy\" with prompt \"要還原哪一份備份？\" OK button name \"下一步\" cancel button name \"取消\""
+        let cancelBtn = L.t("取消", "Cancel"), wsBtn = L.t("選擇工作區", "Choose Workspaces"), fullBtn = L.t("完整還原", "Full Restore")
+        let pick = "choose from list \(listLit) with title \"Configgy\" with prompt \"\(L.t("要還原哪一份備份？", "Which backup to restore?"))\" OK button name \"\(L.t("下一步", "Next"))\" cancel button name \"\(cancelBtn)\""
         let chosen = String(data: engine.sh("/usr/bin/osascript", ["-e", pick]).1, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? "false"
         if chosen.isEmpty || chosen == "false" { dismiss(); return .neutral }
         guard let zip = map[chosen] else { return .neutral }
 
-        let scopeDialog = "display dialog \"要怎麼套用這份備份？\\n\\n• 完整還原：整個 Zen 設定都換成這份\\n• 選擇工作區：勾選要併進目前 Zen 的工作區\" buttons {\"取消\", \"選擇工作區\", \"完整還原\"} cancel button \"取消\" default button \"完整還原\" with title \"Configgy · 還原\""
+        let scopeBody = L.t("要怎麼套用這份備份？\\n\\n• 完整還原：整個 Zen 設定都換成這份\\n• 選擇工作區：勾選要併進目前 Zen 的工作區",
+                            "How to apply this backup?\\n\\n• Full Restore: replace the whole Zen config\\n• Choose Workspaces: merge selected workspaces into Zen")
+        let scopeDialog = "display dialog \"\(scopeBody)\" buttons {\"\(cancelBtn)\", \"\(wsBtn)\", \"\(fullBtn)\"} cancel button \"\(cancelBtn)\" default button \"\(fullBtn)\" with title \"\(L.t("Configgy · 還原", "Configgy · Restore"))\""
         let (code, sd) = engine.sh("/usr/bin/osascript", ["-e", scopeDialog])
         if code != 0 { dismiss(); return .neutral }
-        if !(String(data: sd, encoding: .utf8) ?? "").contains("選擇工作區") {
+        if !(String(data: sd, encoding: .utf8) ?? "").contains(wsBtn) {
             let cs = engine.previewRestore(zip)
-            if !confirmChanges(cs, title: "Configgy · 還原", what: "Zen 設定") { dismiss(); return .neutral }
+            if !confirmChanges(cs, title: L.t("Configgy · 還原", "Configgy · Restore"), what: L.t("Zen 設定", "Zen config")) { dismiss(); return .neutral }
             return outcome(engine.restore(zip, scope: .full))
         }
         let wss = engine.workspacesIn(zip)
         if wss.isEmpty { return .failure }
         var picked: Set<String>?
-        DispatchQueue.main.sync { picked = WorkspacePicker.run(wss) }       // native checkbox UI on main
+        DispatchQueue.main.sync {
+            picked = CheckboxPicker.run(wss, title: L.t("Configgy · 還原", "Configgy · Restore"),
+                                        prompt: L.t("勾選要併進目前 Zen 的工作區：", "Select workspaces to merge into Zen:"),
+                                        ok: L.t("還原", "Restore"))
+        }
         guard let uuids = picked, !uuids.isEmpty else { dismiss(); return .neutral }
         return outcome(engine.restoreWorkspaces(zip, uuids: uuids))
     }
@@ -355,32 +411,37 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         func esc(_ s: String) -> String { s.replacingOccurrences(of: "\\", with: "/").replacingOccurrences(of: "\"", with: "'") }
         let body: String
         if cs.isEmpty {
-            body = "這份備份與目前\(what)沒有差異。仍要套用嗎？"
+            body = L.t("這份備份與目前\(what)沒有差異。仍要套用嗎？", "This backup is identical to the current \(what). Apply anyway?")
         } else {
             let lines = cs.modified.map { "~ " + $0 } + cs.added.map { "+ " + $0 }
             let shown = lines.prefix(20).map(esc).joined(separator: "\\n")
-            let more = lines.count > 20 ? "\\n… 還有 \(lines.count - 20) 項" : ""
-            body = "這次會變更 \(cs.count) 個檔案（修改 \(cs.modified.count)、新增 \(cs.added.count)）：\\n\\n\(shown)\(more)\\n\\n舊檔會先備份。確定還原？"
+            let more = lines.count > 20 ? L.t("\\n… 還有 \(lines.count - 20) 項", "\\n… and \(lines.count - 20) more") : ""
+            body = L.t("這次會變更 \(cs.count) 個檔案（修改 \(cs.modified.count)、新增 \(cs.added.count)）：\\n\\n\(shown)\(more)\\n\\n舊檔會先備份。確定還原？",
+                       "\(cs.count) file(s) will change (\(cs.modified.count) modified, \(cs.added.count) added):\\n\\n\(shown)\(more)\\n\\nOld files are backed up first. Restore?")
         }
-        let d = "display dialog \"\(body)\" buttons {\"取消\", \"確定還原\"} default button \"確定還原\" cancel button \"取消\" with title \"\(esc(title))\""
+        let d = "display dialog \"\(body)\" buttons {\"\(L.t("取消","Cancel"))\", \"\(L.t("確定還原","Restore"))\"} default button \"\(L.t("確定還原","Restore"))\" cancel button \"\(L.t("取消","Cancel"))\" with title \"\(esc(title))\""
         return engine.sh("/usr/bin/osascript", ["-e", d]).0 == 0
     }
 
     func claudeRestoreFlow() -> OpOutcome {
         let snaps = Array(claude.listSnapshots().reversed())   // newest first
-        if snaps.isEmpty {
-            _ = engine.sh("/usr/bin/osascript", ["-e", "display dialog \"Dropbox 還沒有 Claude 設定備份。\" buttons {\"好\"} default button \"好\" with title \"Configgy · Claude\""])
-            return .neutral
-        }
-        var map: [String: String] = [:]
-        let labels = snaps.map { z -> String in let l = claude.label(z); map[l] = z; return l }
-        let listLit = "{" + labels.map { "\"" + $0.replacingOccurrences(of: "\"", with: "\\\"") + "\"" }.joined(separator: ", ") + "}"
-        let pick = "choose from list \(listLit) with title \"Configgy · Claude\" with prompt \"還原哪一份 Claude 設定？\" OK button name \"下一步\" cancel button name \"取消\""
-        let chosen = String(data: engine.sh("/usr/bin/osascript", ["-e", pick]).1, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? "false"
-        if chosen.isEmpty || chosen == "false" { return .neutral }
-        guard let zip = map[chosen] else { return .neutral }
-        if !confirmChanges(claude.previewRestore(zip), title: "Configgy · Claude 還原", what: "Claude 設定") { return .neutral }
+        if snaps.isEmpty { info(L.t("Dropbox 還沒有 Claude 設定備份。", "No Claude config backup yet.")); return .neutral }
+        guard let zip = pickSnapshot(snaps, label: { self.claude.label($0) }, title: "Configgy · Claude") else { return .neutral }
+        if !confirmChanges(claude.previewRestore(zip), title: L.t("Configgy · Claude 還原", "Configgy · Restore Claude"), what: L.t("Claude 設定", "Claude config")) { return .neutral }
         return outcome(claude.restore(zip))
+    }
+    // shared snapshot chooser (osascript list) used by Claude + generic restores
+    func pickSnapshot(_ snaps: [String], label: (String) -> String, title: String) -> String? {
+        var map: [String: String] = [:]
+        let labels = snaps.map { z -> String in let l = label(z); map[l] = z; return l }
+        let listLit = "{" + labels.map { "\"" + $0.replacingOccurrences(of: "\"", with: "\\\"") + "\"" }.joined(separator: ", ") + "}"
+        let pick = "choose from list \(listLit) with title \"\(title)\" with prompt \"\(L.t("還原哪一份？", "Which snapshot?"))\" OK button name \"\(L.t("下一步", "Next"))\" cancel button name \"\(L.t("取消", "Cancel"))\""
+        let chosen = String(data: engine.sh("/usr/bin/osascript", ["-e", pick]).1, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? "false"
+        if chosen.isEmpty || chosen == "false" { return nil }
+        return map[chosen]
+    }
+    func info(_ msg: String) {
+        _ = engine.sh("/usr/bin/osascript", ["-e", "display dialog \"\(msg)\" buttons {\"\(L.t("好","OK"))\"} default button \"\(L.t("好","OK"))\" with title \"Configgy\""])
     }
 
     // ---- generic targets ----
@@ -399,45 +460,37 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     func genericRestoreFlow(_ d: TargetDef) -> OpOutcome {
         let g = GenericBackup(home: engine.home, def: d)
         let snaps = Array(g.listSnapshots().reversed())
-        if snaps.isEmpty {
-            _ = engine.sh("/usr/bin/osascript", ["-e", "display dialog \"「\(d.name)」還沒有備份。\" buttons {\"好\"} default button \"好\" with title \"Configgy\""])
-            return .neutral
-        }
-        var map: [String: String] = [:]
-        let labels = snaps.map { z -> String in let l = g.label(z); map[l] = z; return l }
-        let listLit = "{" + labels.map { "\"" + $0.replacingOccurrences(of: "\"", with: "\\\"") + "\"" }.joined(separator: ", ") + "}"
-        let pick = "choose from list \(listLit) with title \"Configgy · \(d.name)\" with prompt \"還原哪一份？\" OK button name \"下一步\" cancel button name \"取消\""
-        let chosen = String(data: engine.sh("/usr/bin/osascript", ["-e", pick]).1, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? "false"
-        if chosen.isEmpty || chosen == "false" { return .neutral }
-        guard let zip = map[chosen] else { return .neutral }
+        if snaps.isEmpty { info(L.t("「\(d.name)」還沒有備份。", "No backup for \"\(d.name)\" yet.")); return .neutral }
+        guard let zip = pickSnapshot(snaps, label: { g.label($0) }, title: "Configgy · \(d.name)") else { return .neutral }
         if !confirmChanges(g.previewRestore(zip), title: "Configgy · \(d.name)", what: d.name) { return .neutral }
         return outcome(g.restore(zip))
     }
     @objc func targetRemove(_ sender: NSMenuItem) {
         guard let d = defFor(sender) else { return }
-        let ok = engine.sh("/usr/bin/osascript", ["-e", "display dialog \"從清單移除「\(d.name)」？（雲端既有備份不會刪）\" buttons {\"取消\",\"移除\"} default button \"取消\" with title \"Configgy\""]).0 == 0
+        let body = L.t("從清單移除「\(d.name)」？（雲端既有備份不會刪）", "Remove \"\(d.name)\" from the list? (existing backups are kept)")
+        let ok = engine.sh("/usr/bin/osascript", ["-e", "display dialog \"\(body)\" buttons {\"\(L.t("取消","Cancel"))\",\"\(L.t("移除","Remove"))\"} default button \"\(L.t("取消","Cancel"))\" with title \"Configgy\""]).0 == 0
         if ok { TargetStore.remove(d.id, home: engine.home); buildMenu() }
     }
     @objc func addTarget() {
         guard requireFDA() else { return }
         let panel = NSOpenPanel()
         panel.canChooseFiles = true; panel.canChooseDirectories = true; panel.allowsMultipleSelection = true
-        panel.message = "選擇要備份的設定檔或資料夾（可多選）"
+        panel.message = L.t("選擇要備份的設定檔或資料夾（可多選）", "Choose config files or folders to back up (multiple allowed)")
         panel.directoryURL = URL(fileURLWithPath: engine.home)
         NSApp.activate(ignoringOtherApps: true)
         guard panel.runModal() == .OK, !panel.urls.isEmpty else { return }
-        let a = NSAlert(); a.messageText = "為這個備份目標命名"; a.addButton(withTitle: "建立"); a.addButton(withTitle: "取消")
+        let a = NSAlert(); a.messageText = L.t("為這個備份目標命名", "Name this backup target")
+        a.addButton(withTitle: L.t("建立", "Create")); a.addButton(withTitle: L.t("取消", "Cancel"))
         let tf = NSTextField(frame: NSRect(x: 0, y: 0, width: 240, height: 24))
         tf.stringValue = panel.urls.first!.deletingPathExtension().lastPathComponent
         a.accessoryView = tf
         guard a.runModal() == .alertFirstButtonReturn else { return }
         let name = tf.stringValue.isEmpty ? panel.urls.first!.lastPathComponent : tf.stringValue
-        let id = slug(name)
         let paths = panel.urls.map { u -> String in
             let s = u.path
             return s.hasPrefix(engine.home + "/") ? "~" + s.dropFirst(engine.home.count) : s
         }
-        TargetStore.add(TargetDef(id: id, name: name, paths: paths), home: engine.home)
+        TargetStore.add(TargetDef(id: slug(name), name: name, paths: paths), home: engine.home)
         buildMenu()
     }
     func slug(_ s: String) -> String {
@@ -448,12 +501,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     @objc func discoverTargets() {
         guard requireFDA() else { return }
         let items = TargetStore.discover(engine.home)
-        if items.isEmpty {
-            _ = engine.sh("/usr/bin/osascript", ["-e", "display dialog \"沒找到可備份的常見設定。\" buttons {\"好\"} default button \"好\" with title \"Configgy\""])
-            return
-        }
+        if items.isEmpty { info(L.t("沒找到可備份的常見設定。", "No common configs found to back up.")); return }
         let picks = items.map { (uuid: $0.id, label: $0.note.isEmpty ? $0.name : "\($0.name) · \($0.note)") }
-        guard let sel = WorkspacePicker.run(picks), !sel.isEmpty else { return }   // on main (menu action)
+        // each picked config becomes its own independent backup target (separate zips) — not a Zen workspace
+        guard let sel = CheckboxPicker.run(picks,
+                title: L.t("掃描建議的設定", "Discovered configs"),
+                prompt: L.t("勾選要加入的設定（各自獨立成備份目標）：", "Select configs to add (each becomes its own target):"),
+                ok: L.t("加入", "Add")), !sel.isEmpty else { return }
         var defs = TargetStore.load(engine.home)
         for it in items where sel.contains(it.id) {
             defs.removeAll { $0.id == it.id }
@@ -492,6 +546,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         NSWorkspace.shared.open(URL(fileURLWithPath: base))
     }
     @objc func togglePause() { paused.toggle(); refreshHeader() }
+    @objc func about() { NSWorkspace.shared.open(URL(string: "https://github.com/rocavence/Configgy-app/releases")!) }
+    @objc func setLanguage(_ sender: NSMenuItem) {
+        let code = sender.representedObject as? String
+        var s = Settings.load(engine.home); s.language = (code == "system") ? nil : code; Settings.save(s, home: engine.home)
+        L.lang = L.resolve(s.language)
+        buildMenu()
+    }
+    @objc func toggleLaunchAtLogin() {
+        do {
+            if SMAppService.mainApp.status == .enabled { try SMAppService.mainApp.unregister() }
+            else { try SMAppService.mainApp.register() }
+        } catch {
+            info(L.t("無法變更開機自動啟動：\(error.localizedDescription)", "Couldn't change Launch at Login: \(error.localizedDescription)"))
+        }
+        buildMenu()
+    }
     @objc func quit() { NSApp.terminate(nil) }
 }
 

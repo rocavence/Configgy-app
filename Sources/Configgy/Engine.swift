@@ -21,7 +21,7 @@ final class Engine {
     let home: String
     let zenRoot: String
     let profileDir: String
-    let dropboxDir: String
+    var dropboxDir: String { Engine.dropboxBase(home: home) + "/zen" }   // dynamic: honors a chosen backup folder
     let stateDir: String
     let stateFile: String
     let host: String
@@ -65,7 +65,6 @@ final class Engine {
         stateFile = stateDir + "/state.json"
         host = Engine.detectHost()
         profileDir = try Engine.detectProfile(zenRoot: zenRoot)
-        dropboxDir = Engine.dropboxBase(home: home) + "/zen"
     }
 
     // ---------- detection ----------
@@ -97,10 +96,19 @@ final class Engine {
         throw NSError(domain: "Configgy", code: 1, userInfo: [NSLocalizedDescriptionKey: "找不到 Zen profile（installs.ini）"])
     }
     static func dropboxBase(home: String) -> String {
+        if let b = Settings.load(home).backupBase, !b.isEmpty { return b }   // user-chosen folder wins
         for base in [home + "/Dropbox", home + "/Library/CloudStorage/Dropbox"] {
             if FileManager.default.fileExists(atPath: base) { return base + "/Apps/Configgy" }
         }
-        return home + "/Library/CloudStorage/Dropbox/Apps/Configgy"
+        return home + "/Library/CloudStorage/Dropbox/Apps/Configgy"          // last-resort fallback
+    }
+    // true if we have a usable backup root (user-set, or Dropbox detected)
+    static func backupRootResolved(home: String) -> Bool {
+        if let b = Settings.load(home).backupBase, !b.isEmpty { return true }
+        for base in [home + "/Dropbox", home + "/Library/CloudStorage/Dropbox"] {
+            if FileManager.default.fileExists(atPath: base) { return true }
+        }
+        return false
     }
     static func legacyZenDir(home: String) -> String {
         for base in [home + "/Dropbox", home + "/Library/CloudStorage/Dropbox"] {
