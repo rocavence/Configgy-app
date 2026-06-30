@@ -51,9 +51,8 @@ if args.count > 1 {
         exit(0)
     default: break
     }
-    do {
-        let e = try Engine()
-        switch args[1] {
+    let e = Engine()
+    switch args[1] {
         case "backup":
             e.backup(force: args.contains("--force"))
         case "list":
@@ -84,10 +83,6 @@ if args.count > 1 {
             } else { e.promptRestore() }
         default:
             print("Usage: Configgy [backup|list|status|restore [zip]]")
-        }
-    } catch {
-        FileHandle.standardError.write(Data("[configgy] \(error.localizedDescription)\n".utf8))
-        exit(1)
     }
     exit(0)
 }
@@ -106,6 +101,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     var busy = false
     var paused = false
     var fdaOK = true
+    var zenOn = false                          // Zen is opt-in (Settings.zenEnabled && Zen installed)
     var idleRevert: DispatchWorkItem?
     let menu = NSMenu()                       // persistent; repopulated on every open via menuNeedsUpdate
     let header = NSMenuItem(title: "Configgy", action: nil, keyEquivalent: "")
@@ -113,14 +109,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     let pauseItem = NSMenuItem(title: "", action: #selector(togglePause), keyEquivalent: "")
 
     func applicationDidFinishLaunching(_ note: Notification) {
-        do { engine = try Engine() }
-        catch {
-            let a = NSAlert(); a.messageText = "Configgy"; a.informativeText = error.localizedDescription
-            a.runModal(); NSApp.terminate(nil); return
-        }
+        engine = Engine()
         L.lang = L.resolve(Settings.load(engine.home).language)
         if !engine.isTest && !Engine.backupRootResolved(home: engine.home) { chooseBackupLocation(initial: true) }
         claude = ClaudeBackup(home: engine.home)        // created after the folder prompt so it picks up the choice
+        zenOn = Settings.load(engine.home).zenEnabled && engine.hasZen
         fdaOK = engine.isTest ? true : canAccessBackup()
         engine.migrateLegacy()                          // one-time: old Apps/zennly → Apps/Configgy/zen
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
@@ -221,17 +214,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     func buildMenu() { populate(menu) }       // explicit refresh (also auto-runs on every open)
     func populate(_ m: NSMenu) {
         m.removeAllItems()
+        zenOn = Settings.load(engine.home).zenEnabled && engine.hasZen
         header.isEnabled = false
         m.addItem(header)
         fdaItem.title = L.t("⚠︎ 授予完整磁碟取用權…", "⚠︎ Grant Full Disk Access…")
         fdaItem.isHidden = fdaOK
         m.addItem(fdaItem)
         m.addItem(.separator())
-        m.addItem(withTitle: L.t("備份 Zen（立即）", "Back Up Zen Now"), action: #selector(doBackup), keyEquivalent: "b").target = self
-        m.addItem(withTitle: L.t("還原 Zen…（可選工作區）", "Restore Zen…"), action: #selector(doRestore), keyEquivalent: "r").target = self
-        m.addItem(.separator())
         m.addItem(withTitle: L.t("備份 Claude 設定", "Back Up Claude Config"), action: #selector(doClaudeBackup), keyEquivalent: "").target = self
         m.addItem(withTitle: L.t("還原 Claude 設定", "Restore Claude Config"), action: #selector(doClaudeRestore), keyEquivalent: "").target = self
+        if zenOn {                              // Zen is opt-in via "Scan for Configs…"
+            m.addItem(.separator())
+            m.addItem(withTitle: L.t("備份 Zen（立即）", "Back Up Zen Now"), action: #selector(doBackup), keyEquivalent: "b").target = self
+            m.addItem(withTitle: L.t("還原 Zen…（可選工作區）", "Restore Zen…"), action: #selector(doRestore), keyEquivalent: "r").target = self
+        }
         m.addItem(.separator())
         // user-defined / discovered targets — flat per-target items, like Zen/Claude;
         // each backs up to its own versioned zip under targets/<id>/.
@@ -248,8 +244,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             m.addItem(withTitle: L.t("移除自訂目標…", "Remove a Target…"), action: #selector(removeTargetMenu), keyEquivalent: "").target = self
         }
         m.addItem(.separator())
-        pauseItem.title = L.t("暫停 Zen 自動備份/還原", "Pause Zen Auto Backup/Restore")
-        m.addItem(pauseItem)
+        if zenOn {
+            pauseItem.title = L.t("暫停 Zen 自動備份/還原", "Pause Zen Auto Backup/Restore")
+            m.addItem(pauseItem)
+        }
         m.addItem(withTitle: L.t("開啟備份資料夾", "Open Backup Folder"), action: #selector(openDropbox), keyEquivalent: "").target = self
         m.addItem(withTitle: L.t("備份位置…", "Backup Location…"), action: #selector(changeBackupLocation), keyEquivalent: "").target = self
         // launch at login (default off)
@@ -279,8 +277,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         fdaItem.isHidden = fdaOK
         let st = engine.readState()
         let cur = st.currentZip.map { engine.label($0) } ?? L.t("尚未備份", "no backup yet")
-        header.title = (fdaOK ? (engine.zenRunning() ? L.t("● Zen 開啟中", "● Zen running") : L.t("○ Zen 已關閉", "○ Zen closed"))
-                              : L.t("⚠︎ 尚未授予磁碟取用權", "⚠︎ no backup access")) + (busy ? L.t("（處理中…）", " (working…)") : "")
+        let state: String
+        if !fdaOK { state = L.t("⚠︎ 尚未授予磁碟取用權", "⚠︎ no backup access") }
+        else if zenOn { state = engine.zenRunning() ? L.t("● Zen 開啟中", "● Zen running") : L.t("○ Zen 已關閉", "○ Zen closed") }
+        else { state = "Configgy" }
+        header.title = state + (busy ? L.t("（處理中…）", " (working…)") : "")
         header.toolTip = L.t("目前對應備份：\(cur)\n備份位置：\(engine.dropboxDir)", "Current backup: \(cur)\nLocation: \(engine.dropboxDir)")
         pauseItem.state = paused ? .on : .off
     }
@@ -355,7 +356,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
         let cancelBtn = L.t("取消", "Cancel"), wsBtn = L.t("選擇工作區", "Choose Workspaces"), fullBtn = L.t("完整還原", "Full Restore")
         var pickedZip: String?
-        let rows = zips.map { PickerRow(id: $0, title: engine.label($0), subtitle: "", icon: Icons.app("app.zen_browser.zen")) }
+        let rows = zips.map { PickerRow(id: $0, title: engine.label($0), subtitle: "", icon: Icons.app("app.zen-browser.zen")) }
         DispatchQueue.main.sync {
             pickedZip = PickerWindow.chooseOne(title: "Configgy · Zen",
                 prompt: L.t("要還原哪一份備份？", "Which backup to restore?"), items: rows, ok: L.t("下一步", "Next"))
@@ -375,7 +376,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let wss = engine.workspacesIn(zip)
         if wss.isEmpty { return .failure }
         var picked: Set<String>?
-        let wrows = wss.map { PickerRow(id: $0.uuid, title: $0.label, subtitle: "", icon: Icons.app("app.zen_browser.zen")) }
+        let wrows = wss.map { PickerRow(id: $0.uuid, title: $0.label, subtitle: "", icon: Icons.app("app.zen-browser.zen")) }
         DispatchQueue.main.sync {
             picked = PickerWindow.chooseMany(title: L.t("Configgy · 還原", "Configgy · Restore"),
                 prompt: L.t("勾選要併進目前 Zen 的工作區：", "Select workspaces to merge into Zen:"), items: wrows, ok: L.t("還原", "Restore"))
@@ -481,13 +482,24 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
     @objc func discoverTargets() {           // scanning/adding needs no FDA; only the backup itself does
         let items = TargetStore.discover(engine.home)
-        if items.isEmpty { info(L.t("沒找到可備份的常見設定。", "No common configs found to back up.")); return }
-        // each picked config becomes its own independent backup target (separate zips) — not a Zen workspace
-        let picks = items.map { PickerRow(id: $0.id, title: $0.name, subtitle: $0.note, icon: Icons.app($0.app)) }
+        let zenSuggested = engine.hasZen && !Settings.load(engine.home).zenEnabled   // Zen is opt-in
+        if items.isEmpty && !zenSuggested { info(L.t("沒找到可備份的常見設定。", "No common configs found to back up.")); return }
+        // each picked config becomes its own independent backup target (separate zips)
+        var picks: [PickerRow] = []
+        if zenSuggested {
+            picks.append(PickerRow(id: "__zen__", title: L.t("Zen 瀏覽器", "Zen Browser"),
+                                   subtitle: L.t("自動備份＋跨機還原（含工作區）", "auto-backup + cross-device restore"),
+                                   icon: Icons.app("app.zen-browser.zen")))
+        }
+        picks += items.map { PickerRow(id: $0.id, title: $0.name, subtitle: $0.note, icon: Icons.app($0.app)) }
         guard let sel = PickerWindow.chooseMany(
                 title: L.t("掃描建議的設定", "Discovered Configs"),
-                prompt: L.t("勾選要加入的設定（各自獨立成備份目標）：", "Select configs to add (each becomes its own target):"),
+                prompt: L.t("勾選要加入的設定（各自獨立成備份目標）：", "Select what to add (each backs up separately):"),
                 items: picks, ok: L.t("加入", "Add")), !sel.isEmpty else { return }
+        if sel.contains("__zen__") {
+            var s = Settings.load(engine.home); s.zenEnabled = true; Settings.save(s, home: engine.home)
+            zenOn = engine.hasZen
+        }
         var defs = TargetStore.load(engine.home)
         for it in items where sel.contains(it.id) {
             defs.removeAll { $0.id == it.id }
@@ -499,7 +511,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     // ---- watch loop ----
     func tick() {
-        if paused || busy || !fdaOK { return }       // no FDA → can't touch Dropbox; the menu warning guides the user
+        if paused || busy || !fdaOK || !zenOn { return }   // Zen auto-watch only when Zen is enabled & accessible
         let now = engine.zenRunning()
         if now && !wasRunning {                                   // OPEN edge
             let newest = engine.newestZip(); let st = engine.readState()

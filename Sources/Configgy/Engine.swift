@@ -58,13 +58,15 @@ final class Engine {
         echo "restored into $P (previous files in $BK)"
         """
 
-    init() throws {
+    var hasZen: Bool { !profileDir.isEmpty }   // Zen installed & a profile found
+
+    init() {
         home = ProcessInfo.processInfo.environment["HOME"] ?? NSHomeDirectory()
         zenRoot = home + "/Library/Application Support/zen"
         stateDir = home + "/Library/Application Support/Configgy"
         stateFile = stateDir + "/state.json"
         host = Engine.detectHost()
-        profileDir = try Engine.detectProfile(zenRoot: zenRoot)
+        profileDir = (try? Engine.detectProfile(zenRoot: zenRoot)) ?? ""   // empty if no Zen — app still runs
     }
 
     // ---------- detection ----------

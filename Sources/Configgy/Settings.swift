@@ -4,6 +4,7 @@ import Foundation
 struct ConfiggySettings: Codable {
     var backupBase: String? = nil   // full path to the "Configgy" backup folder; nil → auto-detect
     var language: String? = nil     // "zh" | "en" | nil (follow system)
+    var zenEnabled: Bool = false    // Zen is opt-in (a suggested target); only Claude is on by default
 }
 
 // Detect the local sync folder of each cloud provider; returns the Configgy

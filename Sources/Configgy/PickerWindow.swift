@@ -67,9 +67,17 @@ final class PickerWindow: NSObject {
 
         let head = NSTextField(labelWithString: prompt)
         head.font = .systemFont(ofSize: 12); head.textColor = .secondaryLabelColor
-        head.frame = NSRect(x: 22, y: winH - 34, width: width - 44, height: 18)
+        head.lineBreakMode = .byTruncatingTail
+        head.frame = NSRect(x: 22, y: winH - 34, width: width - 44 - (multi ? 116 : 0), height: 18)
         head.autoresizingMask = [.minYMargin, .width]
         bg.addSubview(head)
+        if multi {                                // Select All / Deselect All — top-right
+            let sa = NSButton(title: L.t("全選", "Select All"), target: self, action: #selector(selectAllTapped))
+            sa.bezelStyle = .rounded; sa.controlSize = .small; sa.font = .systemFont(ofSize: 11)
+            sa.frame = NSRect(x: width - 116, y: winH - 38, width: 102, height: 24)
+            sa.autoresizingMask = [.minXMargin, .minYMargin]
+            bg.addSubview(sa); selectAllBtn = sa
+        }
 
         let scroll = NSScrollView(frame: NSRect(x: 12, y: footerH, width: width - 24, height: listH))
         scroll.hasVerticalScroller = true; scroll.drawsBackground = false
@@ -87,12 +95,6 @@ final class PickerWindow: NSObject {
         okB.frame = NSRect(x: width - 110, y: 14, width: 96, height: 32)
         cancel.autoresizingMask = [.minXMargin]; okB.autoresizingMask = [.minXMargin]
         bg.addSubview(cancel); bg.addSubview(okB)
-
-        if multi {
-            let sa = NSButton(title: L.t("全選", "Select All"), target: self, action: #selector(selectAllTapped))
-            sa.bezelStyle = .rounded; sa.frame = NSRect(x: 14, y: 14, width: 108, height: 32)
-            bg.addSubview(sa); selectAllBtn = sa
-        }
 
         win.center()
         NSApp.activate(ignoringOtherApps: true)
