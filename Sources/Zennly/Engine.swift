@@ -180,13 +180,17 @@ final class Engine {
     // to close it first instead of silently skipping.
     @discardableResult
     func manualBackup() -> BackupResult {
+        var weClosed = false
         if zenRunning() {
-            let dialog = "display dialog \"Zen 還開著。備份需要 Zen 完全關閉（設定檔關閉時才寫定）。要關閉 Zen 並備份嗎？\" buttons {\"取消\", \"關閉並備份\"} default button \"關閉並備份\" with title \"Zennly\" with icon note"
+            let dialog = "display dialog \"Zen 還開著。備份需要 Zen 完全關閉（設定檔關閉時才寫定）。要關閉 Zen 並備份嗎？（備份完會自動重開）\" buttons {\"取消\", \"關閉並備份\"} default button \"關閉並備份\" with title \"Zennly\" with icon note"
             if sh("/usr/bin/osascript", ["-e", dialog]).0 != 0 { return .skipped }   // cancelled
             sh("/usr/bin/osascript", ["-e", "tell application \"Zen\" to quit"])
             for _ in 0..<40 where zenRunning() { Thread.sleep(forTimeInterval: 0.5) }
+            weClosed = true
         }
-        return backup(force: true)
+        let r = backup(force: true)
+        if weClosed && !isTest { sh("/usr/bin/open", ["-a", "Zen"]) }   // reopen what we closed
+        return r
     }
 
     @discardableResult
