@@ -13,6 +13,7 @@ struct State: Codable {
 
 enum BackupResult { case done(String), skipped, failed }
 enum RestoreResult { case done(String), cancelled, failed }
+enum RestoreScope { case full, workspace }   // workspace = workspaces + tabs only
 
 // All of Zennly's backup/restore logic. Pure Swift + a few shell-outs to
 // cp/zip/unzip/pgrep/osascript/open — same approach the menubar app and the CLI share.
@@ -34,6 +35,8 @@ final class Engine {
                  "handlers.json", "extensions.json", "addonStartup.json.lz4", "times.json",
                  "sessionCheckpoints.json", "compatibility.ini"]
     let dirs = ["chrome", "extensions", "browser-extension-data", "zen-sessions-backup", "sessionstore-backups"]
+    // "只套用工作區" 的範圍：工作區+分頁，加上容器定義與 space routing 讓綁定對得上。
+    let workspaceFiles: Set<String> = ["zen-sessions.jsonlz4", "zen-space-routing.jsonlz4", "containers.json"]
 
     let fm = FileManager.default
 
@@ -237,7 +240,7 @@ final class Engine {
 
     // ---------- restore ----------
     @discardableResult
-    func restore(_ zip: String) -> RestoreResult {
+    func restore(_ zip: String, scope: RestoreScope = .full) -> RestoreResult {
         let zpath = dropboxDir + "/" + zip
         guard fm.fileExists(atPath: zpath) else { log("找不到備份：\(zip)"); return .failed }
         try? fm.createDirectory(atPath: stateDir, withIntermediateDirectories: true)
@@ -256,9 +259,11 @@ final class Engine {
         let src = tmp + "/snapshot/profile"
         guard fm.fileExists(atPath: src) else { log("備份內容損壞（找不到 profile/）"); return .failed }
 
+        let all = (try? fm.contentsOfDirectory(atPath: src)) ?? []
+        let apply = scope == .full ? all : all.filter { workspaceFiles.contains($0) }
         let bk = profileDir + "/pre-restore-backup-\(stamp())"
         try? fm.createDirectory(atPath: bk, withIntermediateDirectories: true)
-        for name in (try? fm.contentsOfDirectory(atPath: src)) ?? [] {
+        for name in apply {
             let dst = profileDir + "/" + name
             if fm.fileExists(atPath: dst) { sh("/bin/cp", ["-Rp", dst, bk + "/" + name]); try? fm.removeItem(atPath: dst) }
             sh("/bin/cp", ["-Rp", src + "/" + name, profileDir + "/"])
@@ -266,9 +271,14 @@ final class Engine {
         try? fm.removeItem(atPath: tmp)
 
         var st = readState()
-        st.currentZip = zip; st.lastBackupHash = profileHash(); st.dismissedZip = nil
+        // a full restore makes this the current snapshot; a workspace-only apply
+        // doesn't (the rest of the profile still differs), so leave currentZip but
+        // record dismissedZip so the open-prompt doesn't immediately re-nag.
+        if scope == .full { st.currentZip = zip; st.lastBackupHash = profileHash() }
+        st.dismissedZip = newestZip()
         writeState(st)
-        log("✓ 已還原 \(zip)（舊設定備份在 \((bk as NSString).lastPathComponent)）")
+        let scopeLabel = scope == .full ? "完整" : "只工作區"
+        log("✓ 已還原[\(scopeLabel)] \(zip)（舊設定備份在 \((bk as NSString).lastPathComponent)）")
         if !isTest { log("重新開啟 Zen…"); sh("/usr/bin/open", ["-a", "Zen"]) }
         return .done(zip)
     }
@@ -299,7 +309,16 @@ final class Engine {
             return .cancelled
         }
         guard let zip = map[chosen] else { return .cancelled }
-        return restore(zip)
+
+        // second step: choose what to apply.
+        let scopeDialog = "display dialog \"要怎麼套用這份備份？\\n\\n• 完整還原：整個 Zen 設定都換成這份\\n• 只套用工作區：只還原工作區＋分頁（容器/綁定），其餘設定不動\" buttons {\"取消\", \"只套用工作區\", \"完整還原\"} cancel button \"取消\" default button \"完整還原\" with title \"Zennly · 還原\""
+        let (code, sd) = sh("/usr/bin/osascript", ["-e", scopeDialog])
+        if code != 0 {                       // 取消
+            if autoDismiss { var st = readState(); st.dismissedZip = newestZip(); writeState(st) }
+            return .cancelled
+        }
+        let scope: RestoreScope = (String(data: sd, encoding: .utf8) ?? "").contains("只套用工作區") ? .workspace : .full
+        return restore(zip, scope: scope)
     }
 
     func log(_ m: String) { FileHandle.standardError.write(Data("[zennly] \(m)\n".utf8)) }
