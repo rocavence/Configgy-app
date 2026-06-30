@@ -106,8 +106,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     var wasRunning = false
     var busy = false
     var paused = false
+    var fdaOK = true
+    var welcomeShown = false
     var idleRevert: DispatchWorkItem?
     let header = NSMenuItem(title: "Configgy", action: nil, keyEquivalent: "")
+    let fdaItem = NSMenuItem(title: "⚠︎ 授予完整磁碟取用權…", action: #selector(openFDAGuide), keyEquivalent: "")
     let pauseItem = NSMenuItem(title: "暫停 Zen 自動備份/還原", action: #selector(togglePause), keyEquivalent: "")
 
     func applicationDidFinishLaunching(_ note: Notification) {
@@ -117,20 +120,63 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             a.runModal(); NSApp.terminate(nil); return
         }
         claude = ClaudeBackup(home: engine.home)
+        fdaOK = engine.isTest ? true : hasFullDiskAccess()
         engine.migrateLegacy()                          // one-time: old Apps/zennly → Apps/Configgy/zen
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         statusItem.button?.wantsLayer = true
         setIcon(.idle)
         pauseItem.target = self
+        fdaItem.target = self
         buildMenu()
         wasRunning = engine.zenRunning()
         timer = Timer.scheduledTimer(withTimeInterval: 2.5, repeats: true) { [weak self] _ in self?.tick() }
+        if !fdaOK { showWelcome(firstRun: true) }       // macOS never auto-prompts for FDA — guide the user
+    }
+
+    // TCC.db is readable only with Full Disk Access — the standard FDA probe.
+    func hasFullDiskAccess() -> Bool {
+        let tcc = engine.home + "/Library/Application Support/com.apple.TCC/TCC.db"
+        guard let fh = FileHandle(forReadingAtPath: tcc) else { return false }
+        defer { try? fh.close() }
+        return (try? fh.read(upToCount: 1)) != nil
+    }
+
+    @objc func openFDAGuide() { showWelcome(firstRun: false) }
+
+    func showWelcome(firstRun: Bool) {
+        if firstRun { welcomeShown = true }
+        let a = NSAlert()
+        a.icon = NSApp.applicationIconImage
+        a.messageText = firstRun ? "歡迎使用 Configgy" : "需要完整磁碟取用權"
+        a.informativeText = """
+        Configgy 會把你的 Zen 與 Claude 設定備份到 Dropbox，並能跨裝置還原。
+
+        它需要「完整磁碟取用權」才能讀寫 Dropbox 資料夾。macOS 不會自動跳出請求，請手動授權：
+
+        1. 按「打開設定並標出 App」
+        2. 在「完整磁碟取用權」清單按 ＋，選已標出的 Configgy.app
+        3. 打開它的開關，選「結束並重新打開」
+
+        授權並重開後就會開始自動備份。
+        """
+        a.addButton(withTitle: "打開設定並標出 App")
+        a.addButton(withTitle: firstRun ? "稍後" : "關閉")
+        NSApp.activate(ignoringOtherApps: true)
+        if a.runModal() == .alertFirstButtonReturn {
+            let appPath = Bundle.main.bundlePath
+            NSWorkspace.shared.selectFile(appPath, inFileViewerRootedAtPath: (appPath as NSString).deletingLastPathComponent)
+            if let u = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_AllFilesAccess") {
+                NSWorkspace.shared.open(u)
+            }
+        }
     }
 
     func buildMenu() {
         let m = NSMenu(); m.delegate = self
         header.isEnabled = false
         m.addItem(header)
+        fdaItem.isHidden = fdaOK
+        m.addItem(fdaItem)
         m.addItem(.separator())
         m.addItem(withTitle: "備份 Zen（立即）", action: #selector(doBackup), keyEquivalent: "b").target = self
         m.addItem(withTitle: "還原 Zen…（可選工作區）", action: #selector(doRestore), keyEquivalent: "r").target = self
@@ -147,9 +193,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     func menuNeedsUpdate(_ menu: NSMenu) { refreshHeader() }
     func refreshHeader() {
+        fdaOK = engine.isTest ? true : hasFullDiskAccess()
+        fdaItem.isHidden = fdaOK
         let st = engine.readState()
         let cur = st.currentZip.map { engine.label($0) } ?? "尚未備份"
-        header.title = (engine.zenRunning() ? "● Zen 開啟中" : "○ Zen 已關閉") + (busy ? "（處理中…）" : "")
+        header.title = (fdaOK ? (engine.zenRunning() ? "● Zen 開啟中" : "○ Zen 已關閉")
+                              : "⚠︎ 尚未授予磁碟取用權") + (busy ? "（處理中…）" : "")
         let sub = NSMenuItem(title: "目前：\(cur)", action: nil, keyEquivalent: ""); sub.isEnabled = false
         // refresh the secondary info line (index 1 is the separator after header; keep header only)
         header.toolTip = "目前對應備份：\(cur)\nDropbox：\(engine.dropboxDir)"
@@ -248,7 +297,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     // ---- watch loop ----
     func tick() {
-        if paused || busy { return }
+        if paused || busy || !fdaOK { return }       // no FDA → can't touch Dropbox; the menu warning guides the user
         let now = engine.zenRunning()
         if now && !wasRunning {                                   // OPEN edge
             let newest = engine.newestZip(); let st = engine.readState()
@@ -264,10 +313,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     // ---- actions ----
-    @objc func doBackup() { runOp { self.outcome(self.engine.manualBackup()) } }
-    @objc func doRestore() { runOp { self.interactiveRestore(autoDismiss: false) } }
-    @objc func doClaudeBackup() { runOp { self.outcome(self.claude.backup()) } }
-    @objc func doClaudeRestore() { runOp { self.outcome(self.claude.restore()) } }
+    func requireFDA() -> Bool { if fdaOK { return true }; openFDAGuide(); return false }
+    @objc func doBackup() { guard requireFDA() else { return }; runOp { self.outcome(self.engine.manualBackup()) } }
+    @objc func doRestore() { guard requireFDA() else { return }; runOp { self.interactiveRestore(autoDismiss: false) } }
+    @objc func doClaudeBackup() { guard requireFDA() else { return }; runOp { self.outcome(self.claude.backup()) } }
+    @objc func doClaudeRestore() { guard requireFDA() else { return }; runOp { self.outcome(self.claude.restore()) } }
     @objc func openDropbox() {
         let base = (engine.dropboxDir as NSString).deletingLastPathComponent   // Apps/Configgy
         try? FileManager.default.createDirectory(atPath: base, withIntermediateDirectories: true)
