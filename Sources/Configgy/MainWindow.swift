@@ -65,7 +65,7 @@ extension AppDelegate {
         if let tint { b.contentTintColor = tint }
         if let id { b.identifier = NSUserInterfaceItemIdentifier(id) }
         b.sizeToFit()
-        var f = b.frame; f.size.height = UI.s(30); f.size.width = f.width + UI.s(14); b.frame = f
+        var f = b.frame; f.size.height = 30; f.size.width = f.width + UI.s(14); b.frame = f   // buttons fixed 30 high
         return b
     }
 
@@ -102,7 +102,7 @@ extension AppDelegate {
         let active = items.filter { !$0.suggestion }
         mainStatus?.stringValue = L.t("備份目標 \(active.count) 個", "\(active.count) backup target(s)")
         doc.subviews.forEach { $0.removeFromSuperview() }
-        let rowH = UI.s(64); let w = doc.bounds.width
+        let rowH = UI.s(72); let w = doc.bounds.width
         var y = UI.s(6); var sawSuggestionHeader = false
         for it in items {
             if it.suggestion && !sawSuggestionHeader {
@@ -123,7 +123,8 @@ extension AppDelegate {
         row.layer?.backgroundColor = NSColor.gray.withAlphaComponent(0.10).cgColor
         row.autoresizingMask = [.width]
         let inner = width - UI.s(20)
-        let isz = UI.s(38)
+        let isz: CGFloat = 56                      // app icon fixed 56
+
         let iv = NSImageView(frame: NSRect(x: UI.s(14), y: (rowH - isz) / 2, width: isz, height: isz))
         iv.image = it.icon; iv.imageScaling = .scaleProportionallyUpOrDown; row.addSubview(iv)
 
