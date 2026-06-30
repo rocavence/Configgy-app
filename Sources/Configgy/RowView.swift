@@ -1,21 +1,21 @@
 import AppKit
 import QuartzCore
 
-// A backup-target row with hover glow, a coloured "流光" shimmer while an action
-// runs, a completed-state flash, and a crumble animation on removal.
+// A backup-target row: border-highlight on hover, a flowing-light progress bar
+// while an action runs, a completed-state flash, and a crumble on removal.
 final class RowView: NSView {
     private let id: String
-    private var hovering = false
     private var busy = false
     private var tracking: NSTrackingArea?
-    private var shimmerLayer: CAGradientLayer?
+    private var progressTrack: CALayer?
+    private var actionButtons: [PillButton] = []   // right-to-left order
     private var backupBtn: PillButton?
     private var restoreBtn: PillButton?
     private let radius = UI.s(13)
 
-    var onBackup: ((@escaping (Bool) -> Void) -> Void)?     // perform → completion(success)
+    var onBackup: ((@escaping (Bool) -> Void) -> Void)?
     var onRestore: ((@escaping (Bool) -> Void) -> Void)?
-    var onRemove: ((@escaping (Bool) -> Void) -> Void)?     // confirm+perform → completion(removed)
+    var onRemove: ((@escaping (Bool) -> Void) -> Void)?
     var onAdd: (() -> Void)?
     var onRefresh: (() -> Void)?
 
@@ -24,40 +24,36 @@ final class RowView: NSView {
         super.init(frame: NSRect(x: UI.s(12), y: y, width: width - UI.s(24), height: rowH))
         wantsLayer = true
         layer?.cornerRadius = radius
-        layer?.masksToBounds = false                 // allow glow shadow outside bounds
+        layer?.masksToBounds = true                  // clip everything to the rounded rect (fixes corner glitch)
         layer?.backgroundColor = NSColor.gray.withAlphaComponent(0.12).cgColor
         autoresizingMask = [.width]
 
-        let inner = bounds.width
         let iconX = UI.s(16), isz = UI.s(44)
         let iv = NSImageView(frame: NSRect(x: iconX, y: (rowH - isz) / 2, width: isz, height: isz))
         iv.image = entry.icon; iv.imageScaling = .scaleProportionallyUpOrDown; addSubview(iv)
 
-        var x = inner - UI.s(14)
-        func place(_ b: PillButton) {
-            x -= b.frame.width
-            b.setFrameOrigin(NSPoint(x: x, y: (rowH - b.frame.height) / 2))
-            b.autoresizingMask = [.minXMargin]; addSubview(b); x -= UI.s(6)
-        }
         if entry.suggestion {
             let add = PillButton(symbol: "plus.circle.fill", title: L.t("加入", "Add"), hoverTint: .controlAccentColor)
-            add.onClick = { [weak self] in self?.onAdd?() }; place(add)
+            add.onClick = { [weak self] in self?.onAdd?() }; actionButtons = [add]; addSubview(add)
         } else {
-            let b = PillButton(symbol: "icloud.and.arrow.up", title: L.t("備份", "Back Up"), hoverTint: .systemGreen, widthFor: L.t("備份完成", "Backed up"))
-            b.onClick = { [weak self] in self?.tapBackup() }; place(b); backupBtn = b
-            let r = PillButton(symbol: "clock.arrow.circlepath", title: L.t("還原", "Restore"), hoverTint: .systemOrange, widthFor: L.t("還原完成", "Restored"))
-            r.onClick = { [weak self] in self?.tapRestore() }; place(r); restoreBtn = r
+            let b = PillButton(symbol: "icloud.and.arrow.up", title: L.t("備份", "Back Up"), hoverTint: .systemGreen)
+            b.onClick = { [weak self] in self?.tapBackup() }; backupBtn = b
+            let r = PillButton(symbol: "clock.arrow.circlepath", title: L.t("還原", "Restore"), hoverTint: .systemOrange)
+            r.onClick = { [weak self] in self?.tapRestore() }; restoreBtn = r
+            actionButtons = [b, r]
             if id.hasPrefix("t:") {
                 let rm = PillButton(symbol: "trash", title: L.t("移除", "Remove"), hoverTint: .systemRed, weak: true)
-                rm.onClick = { [weak self] in self?.tapRemove() }; place(rm)
+                rm.onClick = { [weak self] in self?.tapRemove() }; actionButtons.append(rm)
             } else if id == "zen" {
                 let dis = PillButton(symbol: "pause.circle", title: L.t("停用", "Disable"), hoverTint: .systemRed, weak: true)
-                dis.onClick = { [weak self] in self?.tapRemove() }; place(dis)
+                dis.onClick = { [weak self] in self?.tapRemove() }; actionButtons.append(dis)
             }
+            actionButtons.forEach { addSubview($0) }
         }
-
+        layoutActions()
+        let leftEdge = actionButtons.map { $0.frame.minX }.min() ?? bounds.width
         let nameX = iconX + isz + UI.s(12)
-        let textW = max(x - UI.s(8) - nameX, UI.s(80))
+        let textW = max(leftEdge - UI.s(10) - nameX, UI.s(80))
         let name = NSTextField(labelWithString: entry.name)
         name.font = UI.font(13, .semibold); name.lineBreakMode = .byTruncatingTail
         name.frame = NSRect(x: nameX, y: rowH / 2 + UI.s(2), width: textW, height: UI.s(17))
@@ -69,38 +65,51 @@ final class RowView: NSView {
     }
     required init?(coder: NSCoder) { fatalError() }
 
-    // ---- hover glow ----
+    private func layoutActions() {                  // right-aligned cluster, dynamic widths
+        var x = bounds.width - UI.s(14)
+        for b in actionButtons {
+            x -= b.frame.width
+            b.setFrameOrigin(NSPoint(x: x, y: (bounds.height - b.frame.height) / 2))
+            x -= UI.s(6)
+        }
+    }
+
+    // ---- hover: border highlight ----
     override func updateTrackingAreas() {
         super.updateTrackingAreas()
         if let t = tracking { removeTrackingArea(t) }
         let t = NSTrackingArea(rect: bounds, options: [.mouseEnteredAndExited, .activeAlways], owner: self)
         addTrackingArea(t); tracking = t
     }
-    override func mouseEntered(with e: NSEvent) { hovering = true; glow(true) }
-    override func mouseExited(with e: NSEvent) { hovering = false; glow(false) }
-    private func glow(_ on: Bool) {
-        guard let l = layer else { return }
-        l.shadowColor = NSColor.white.cgColor; l.shadowOffset = .zero
-        l.shadowRadius = on ? UI.s(9) : 0
-        l.shadowOpacity = on ? 0.45 : 0
-        l.backgroundColor = NSColor.gray.withAlphaComponent(on ? 0.18 : 0.12).cgColor
+    override func mouseEntered(with e: NSEvent) { highlight(true) }
+    override func mouseExited(with e: NSEvent) { highlight(false) }
+    private func highlight(_ on: Bool) {
+        layer?.borderWidth = on ? UI.s(1.5) : 0
+        layer?.borderColor = on ? NSColor.white.withAlphaComponent(0.55).cgColor : NSColor.clear.cgColor
+        layer?.backgroundColor = NSColor.gray.withAlphaComponent(on ? 0.17 : 0.12).cgColor
     }
 
-    // ---- shimmer ----
-    private func startShimmer(_ color: NSColor) {
-        let g = CAGradientLayer()
-        g.frame = bounds; g.cornerRadius = radius; g.masksToBounds = true
-        g.startPoint = CGPoint(x: 0, y: 0.5); g.endPoint = CGPoint(x: 1, y: 0.5)
-        let clear = color.withAlphaComponent(0).cgColor
-        g.colors = [clear, color.withAlphaComponent(0.55).cgColor, clear]
-        g.locations = [0, 0.5, 1]
-        layer?.addSublayer(g)
-        let a = CABasicAnimation(keyPath: "locations")
-        a.fromValue = [-0.5, -0.2, 0.1]; a.toValue = [0.9, 1.2, 1.5]
-        a.duration = 1.0; a.repeatCount = .infinity
-        g.add(a, forKey: "shimmer"); shimmerLayer = g
+    // ---- flowing-light progress bar (indeterminate) along the bottom ----
+    private func startProgress(_ color: NSColor) {
+        let bh = UI.s(3)
+        let track = CALayer()
+        track.frame = CGRect(x: UI.s(14), y: UI.s(6), width: bounds.width - UI.s(28), height: bh)
+        track.backgroundColor = color.withAlphaComponent(0.18).cgColor
+        track.cornerRadius = bh / 2; track.masksToBounds = true
+        layer?.addSublayer(track)
+        let segW = track.bounds.width * 0.35
+        let seg = CAGradientLayer()
+        seg.frame = CGRect(x: 0, y: 0, width: segW, height: bh)
+        seg.startPoint = CGPoint(x: 0, y: 0.5); seg.endPoint = CGPoint(x: 1, y: 0.5)
+        seg.colors = [color.withAlphaComponent(0).cgColor, color.cgColor, color.withAlphaComponent(0).cgColor]
+        track.addSublayer(seg)
+        let a = CABasicAnimation(keyPath: "position.x")
+        a.fromValue = -segW / 2; a.toValue = track.bounds.width + segW / 2
+        a.duration = 0.95; a.repeatCount = .infinity
+        seg.add(a, forKey: "flow")
+        progressTrack = track
     }
-    private func stopShimmer() { shimmerLayer?.removeFromSuperlayer(); shimmerLayer = nil }
+    private func stopProgress() { progressTrack?.removeFromSuperlayer(); progressTrack = nil }
 
     // ---- crumble ----
     private func crumble(_ done: @escaping () -> Void) {
@@ -118,24 +127,26 @@ final class RowView: NSView {
     // ---- actions ----
     private func tapBackup() {
         guard !busy, let onBackup else { return }
-        busy = true; startShimmer(.systemGreen)
+        busy = true; startProgress(.systemGreen)
         onBackup { [weak self] ok in
             guard let self else { return }
-            self.stopShimmer()
+            self.stopProgress()
             if ok {
                 self.backupBtn?.setState(symbol: "checkmark.circle.fill", title: L.t("備份完成", "Backed up"), color: .systemGreen)
+                self.layoutActions()
                 DispatchQueue.main.asyncAfter(deadline: .now() + 1.4) { self.onRefresh?() }
             } else { self.busy = false }
         }
     }
     private func tapRestore() {
         guard !busy, let onRestore else { return }
-        busy = true; startShimmer(.systemOrange)
+        busy = true; startProgress(.systemOrange)
         onRestore { [weak self] ok in
             guard let self else { return }
-            self.stopShimmer()
+            self.stopProgress()
             if ok {
                 self.restoreBtn?.setState(symbol: "checkmark.circle.fill", title: L.t("還原完成", "Restored"), color: .systemOrange)
+                self.layoutActions()
                 DispatchQueue.main.asyncAfter(deadline: .now() + 1.4) { self.onRefresh?() }
             } else { self.busy = false }
         }

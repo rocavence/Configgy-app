@@ -31,7 +31,7 @@ extension AppDelegate {
         bg.material = .underWindowBackground; bg.blendingMode = .behindWindow; bg.state = .active
         bg.autoresizingMask = [.width, .height]; win.contentView = bg
 
-        let headerH = UI.s(112)                   // title strip + big title + tabs row
+        let headerH = UI.s(120)                   // title strip + big title + tabs row
         let content = NSView(frame: NSRect(x: 0, y: 0, width: w, height: h - headerH))
         content.autoresizingMask = [.width, .height]; bg.addSubview(content); contentHost = content
 
@@ -40,18 +40,18 @@ extension AppDelegate {
 
         // big title + small version (left, below the traffic-light strip)
         let title = NSTextField(labelWithString: "Configgy")
-        title.font = UI.font(22, .bold); title.sizeToFit()
-        title.setFrameOrigin(NSPoint(x: UI.s(22), y: h - UI.s(60)))
+        title.font = UI.font(30, .bold); title.sizeToFit()
+        title.setFrameOrigin(NSPoint(x: UI.s(22), y: h - UI.s(74)))
         title.autoresizingMask = [.minYMargin]; bg.addSubview(title)
         let ver = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? ""
         let vlabel = NSTextField(labelWithString: "v\(ver)")
-        vlabel.font = UI.font(11); vlabel.textColor = .tertiaryLabelColor; vlabel.sizeToFit()
-        vlabel.setFrameOrigin(NSPoint(x: title.frame.maxX + UI.s(8), y: title.frame.minY + UI.s(5)))
+        vlabel.font = UI.font(11.5, .medium); vlabel.textColor = .tertiaryLabelColor; vlabel.sizeToFit()
+        vlabel.setFrameOrigin(NSPoint(x: title.frame.maxX + UI.s(8), y: title.frame.minY + UI.s(6)))
         vlabel.autoresizingMask = [.minYMargin]; bg.addSubview(vlabel)
 
         let tabs = CapsuleTabs(titles: [L.t("已備份保護", "Protected"), L.t("建議加入", "Suggestions")])
         tabs.onSelect = { [weak self] i in self?.mainTab = i; self?.mainSettings = false; self?.refreshMain() }
-        tabs.setFrameOrigin(NSPoint(x: UI.s(20), y: h - UI.s(102)))   // tabs row, just above the content
+        tabs.setFrameOrigin(NSPoint(x: UI.s(20), y: h - UI.s(110)))   // tabs row, just above the content
         tabs.autoresizingMask = [.maxXMargin, .minYMargin]
         bg.addSubview(tabs); tabsView = tabs       // added last → above the toolbar layer
 
@@ -67,7 +67,7 @@ extension AppDelegate {
 
         // right-aligned toolbar buttons (rightmost first)
         var tx = toolbar.bounds.width - UI.s(20)
-        let btnY = UI.s(14)                            // tabs row sits near the bottom of the header host
+        let btnY = UI.s(12)                            // align with the tabs row (bottom of the header host)
         func tool(_ sym: String, _ t: String, _ act: @escaping () -> Void) {
             let b = PillButton(symbol: sym, title: t); b.onClick = act
             tx -= b.frame.width
