@@ -38,7 +38,13 @@ enum TargetStore {
         DiscoveryItem(id: "karabiner", name: "Karabiner", paths: ["~/.config/karabiner"], excludes: [], note: ""),
         DiscoveryItem(id: "hammerspoon", name: "Hammerspoon", paths: ["~/.hammerspoon"], excludes: [".git/"], note: ""),
         DiscoveryItem(id: "gh", name: "GitHub CLI 設定（不含 token）", paths: ["~/.config/gh"], excludes: ["hosts.yml"], note: "排除含 token 的 hosts.yml"),
-        DiscoveryItem(id: "app-prefs", name: "工具 App 偏好（無雲端同步）", paths: ["~/Library/Preferences/app.monitorcontrol.MonitorControl.plist", "~/Library/Preferences/com.manytricks.Moom.plist", "~/Library/Preferences/com.colliderli.iina.plist", "~/Library/Preferences/com.runjuu.Input-Source-Pro.plist"], excludes: [], note: "MonitorControl/Moom/IINA/Input Source Pro"),
+        // menubar / utility apps with no cloud sync — each listed individually
+        DiscoveryItem(id: "monitorcontrol", name: "MonitorControl", paths: ["~/Library/Preferences/app.monitorcontrol.MonitorControl.plist"], excludes: [], note: ""),
+        DiscoveryItem(id: "moom", name: "Moom", paths: ["~/Library/Preferences/com.manytricks.Moom.plist"], excludes: [], note: ""),
+        DiscoveryItem(id: "iina", name: "IINA", paths: ["~/Library/Preferences/com.colliderli.iina.plist"], excludes: [], note: ""),
+        DiscoveryItem(id: "input-source-pro", name: "Input Source Pro", paths: ["~/Library/Preferences/com.runjuu.Input-Source-Pro.plist"], excludes: [], note: ""),
+        DiscoveryItem(id: "rectangle", name: "Rectangle", paths: ["~/Library/Preferences/com.knollsoft.Rectangle.plist"], excludes: [], note: ""),
+        DiscoveryItem(id: "mac-mouse-fix", name: "Mac Mouse Fix", paths: ["~/Library/Preferences/com.nuebling.mac-mouse-fix.plist"], excludes: [], note: ""),
     ]
     static func discover(_ home: String) -> [DiscoveryItem] {
         let fm = FileManager.default

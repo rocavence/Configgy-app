@@ -278,18 +278,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         m.addItem(withTitle: L.t("備份 Claude 設定", "Back Up Claude Config"), action: #selector(doClaudeBackup), keyEquivalent: "").target = self
         m.addItem(withTitle: L.t("還原 Claude 設定", "Restore Claude Config"), action: #selector(doClaudeRestore), keyEquivalent: "").target = self
         m.addItem(.separator())
-        // user-defined / discovered targets, each its own versioned backup
-        for d in TargetStore.load(engine.home) {
-            let sub = NSMenu()
-            let b = sub.addItem(withTitle: L.t("立即備份", "Back Up Now"), action: #selector(targetBackup(_:)), keyEquivalent: ""); b.target = self; b.representedObject = d.id
-            let r = sub.addItem(withTitle: L.t("還原…", "Restore…"), action: #selector(targetRestore(_:)), keyEquivalent: ""); r.target = self; r.representedObject = d.id
-            sub.addItem(.separator())
-            let x = sub.addItem(withTitle: L.t("移除此目標", "Remove This Target"), action: #selector(targetRemove(_:)), keyEquivalent: ""); x.target = self; x.representedObject = d.id
-            let item = NSMenuItem(title: d.name, action: nil, keyEquivalent: ""); item.submenu = sub
-            m.addItem(item)
+        // user-defined / discovered targets — flat per-target items, like Zen/Claude;
+        // each backs up to its own versioned zip under targets/<id>/.
+        let defs = TargetStore.load(engine.home)
+        for d in defs {
+            let b = m.addItem(withTitle: L.t("備份 \(d.name)（立即）", "Back Up \(d.name) Now"), action: #selector(targetBackup(_:)), keyEquivalent: ""); b.target = self; b.representedObject = d.id
+            let r = m.addItem(withTitle: L.t("還原 \(d.name)…", "Restore \(d.name)…"), action: #selector(targetRestore(_:)), keyEquivalent: ""); r.target = self; r.representedObject = d.id
         }
+        if !defs.isEmpty { m.addItem(.separator()) }
         m.addItem(withTitle: L.t("新增自訂備份資料夾…", "Add Custom Backup Folder…"), action: #selector(addTarget), keyEquivalent: "").target = self
         m.addItem(withTitle: L.t("掃描建議的設定…", "Scan for Configs…"), action: #selector(discoverTargets), keyEquivalent: "").target = self
+        if !defs.isEmpty {
+            m.addItem(withTitle: L.t("移除自訂目標…", "Remove a Target…"), action: #selector(removeTargetMenu), keyEquivalent: "").target = self
+        }
         m.addItem(.separator())
         pauseItem.title = L.t("暫停 Zen 自動備份/還原", "Pause Zen Auto Backup/Restore")
         m.addItem(pauseItem)
@@ -486,11 +487,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         if !confirmChanges(g.previewRestore(zip), title: "Configgy · \(d.name)", what: d.name) { return .neutral }
         return outcome(g.restore(zip))
     }
-    @objc func targetRemove(_ sender: NSMenuItem) {
-        guard let d = defFor(sender) else { return }
-        let body = L.t("從清單移除「\(d.name)」？（雲端既有備份不會刪）", "Remove \"\(d.name)\" from the list? (existing backups are kept)")
-        let ok = engine.sh("/usr/bin/osascript", ["-e", "display dialog \"\(body)\" buttons {\"\(L.t("取消","Cancel"))\",\"\(L.t("移除","Remove"))\"} default button \"\(L.t("取消","Cancel"))\" with title \"Configgy\""]).0 == 0
-        if ok { TargetStore.remove(d.id, home: engine.home); buildMenu() }
+    @objc func removeTargetMenu() {
+        let defs = TargetStore.load(engine.home)
+        if defs.isEmpty { return }
+        let picks = defs.map { (uuid: $0.id, label: $0.name) }
+        guard let sel = CheckboxPicker.run(picks,
+                title: L.t("移除自訂目標", "Remove Targets"),
+                prompt: L.t("勾選要從清單移除的目標（雲端既有備份不會刪）：", "Select targets to remove (existing backups are kept):"),
+                ok: L.t("移除", "Remove")), !sel.isEmpty else { return }
+        for id in sel { TargetStore.remove(id, home: engine.home) }
+        buildMenu()
     }
     @objc func addTarget() {
         guard requireFDA() else { return }
