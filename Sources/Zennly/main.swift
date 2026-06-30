@@ -43,6 +43,54 @@ if args.count > 1 {
 enum IconState { case idle, working, success, failure }
 enum OpOutcome { case success, failure, neutral }
 
+// Native checkbox window for choosing which workspaces to restore. Must run on main.
+final class ModalResponder: NSObject {
+    @objc func ok() { NSApp.stopModal(withCode: .OK) }
+    @objc func cancel() { NSApp.stopModal(withCode: .cancel) }
+}
+enum WorkspacePicker {
+    static func run(_ items: [(uuid: String, label: String)]) -> Set<String>? {
+        let pad: CGFloat = 20, rowH: CGFloat = 30, width: CGFloat = 420
+        let listH = CGFloat(items.count) * rowH
+        let h = listH + 112
+        let panel = NSPanel(contentRect: NSRect(x: 0, y: 0, width: width, height: h),
+                            styleMask: [.titled], backing: .buffered, defer: false)
+        panel.title = "Zennly"
+        guard let content = panel.contentView else { return nil }
+
+        let head = NSTextField(labelWithString: "勾選要併進目前 Zen 的工作區：")
+        head.font = .boldSystemFont(ofSize: 13)
+        head.frame = NSRect(x: pad, y: h - 44, width: width - 2 * pad, height: 20)
+        content.addSubview(head)
+
+        var checks: [NSButton] = []
+        for (i, it) in items.enumerated() {
+            let b = NSButton(checkboxWithTitle: it.label, target: nil, action: nil)
+            b.state = .on
+            b.frame = NSRect(x: pad, y: h - 74 - CGFloat(i) * rowH, width: width - 2 * pad, height: rowH)
+            content.addSubview(b); checks.append(b)
+        }
+
+        let resp = ModalResponder()
+        let cancel = NSButton(title: "取消", target: resp, action: #selector(ModalResponder.cancel))
+        cancel.bezelStyle = .rounded; cancel.keyEquivalent = "\u{1b}"
+        cancel.frame = NSRect(x: width - 204, y: 16, width: 92, height: 30)
+        let ok = NSButton(title: "還原", target: resp, action: #selector(ModalResponder.ok))
+        ok.bezelStyle = .rounded; ok.keyEquivalent = "\r"
+        ok.frame = NSRect(x: width - 106, y: 16, width: 92, height: 30)
+        content.addSubview(cancel); content.addSubview(ok)
+
+        panel.center()
+        NSApp.activate(ignoringOtherApps: true)
+        let code = NSApp.runModal(for: panel)
+        panel.orderOut(nil)
+        guard code == .OK else { return nil }
+        var sel = Set<String>()
+        for (i, b) in checks.enumerated() where b.state == .on { sel.insert(items[i].uuid) }
+        return sel
+    }
+}
+
 final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     var statusItem: NSStatusItem!
     var engine: Engine!
@@ -158,6 +206,34 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         }
     }
 
+    // ---- interactive restore (orchestrated here so the workspace step uses a native checkbox window) ----
+    func interactiveRestore(autoDismiss: Bool) -> OpOutcome {
+        let zips = Array(engine.listZips().reversed())   // newest first
+        if zips.isEmpty { return .neutral }
+        func dismiss() { if autoDismiss { var st = engine.readState(); st.dismissedZip = engine.newestZip(); engine.writeState(st) } }
+
+        var map: [String: String] = [:]
+        let labels = zips.map { z -> String in let l = engine.label(z); map[l] = z; return l }
+        let listLit = "{" + labels.map { "\"" + $0.replacingOccurrences(of: "\"", with: "\\\"") + "\"" }.joined(separator: ", ") + "}"
+        let pick = "choose from list \(listLit) with title \"Zennly\" with prompt \"要還原哪一份備份？\" OK button name \"下一步\" cancel button name \"取消\""
+        let chosen = String(data: engine.sh("/usr/bin/osascript", ["-e", pick]).1, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? "false"
+        if chosen.isEmpty || chosen == "false" { dismiss(); return .neutral }
+        guard let zip = map[chosen] else { return .neutral }
+
+        let scopeDialog = "display dialog \"要怎麼套用這份備份？\\n\\n• 完整還原：整個 Zen 設定都換成這份\\n• 選擇工作區：勾選要併進目前 Zen 的工作區\" buttons {\"取消\", \"選擇工作區\", \"完整還原\"} cancel button \"取消\" default button \"完整還原\" with title \"Zennly · 還原\""
+        let (code, sd) = engine.sh("/usr/bin/osascript", ["-e", scopeDialog])
+        if code != 0 { dismiss(); return .neutral }
+        if !(String(data: sd, encoding: .utf8) ?? "").contains("選擇工作區") {
+            return outcome(engine.restore(zip, scope: .full))
+        }
+        let wss = engine.workspacesIn(zip)
+        if wss.isEmpty { return .failure }
+        var picked: Set<String>?
+        DispatchQueue.main.sync { picked = WorkspacePicker.run(wss) }       // native checkbox UI on main
+        guard let uuids = picked, !uuids.isEmpty else { dismiss(); return .neutral }
+        return outcome(engine.restoreWorkspaces(zip, uuids: uuids))
+    }
+
     // ---- watch loop ----
     func tick() {
         if paused || busy { return }
@@ -165,7 +241,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         if now && !wasRunning {                                   // OPEN edge
             let newest = engine.newestZip(); let st = engine.readState()
             if let nz = newest, nz != st.currentZip, nz != st.dismissedZip {
-                runOp { Thread.sleep(forTimeInterval: 2); return self.outcome(self.engine.promptRestore(autoDismiss: true)) }
+                runOp { Thread.sleep(forTimeInterval: 2); return self.interactiveRestore(autoDismiss: true) }
             }
         } else if !now && wasRunning {                            // QUIT edge
             if !FileManager.default.fileExists(atPath: engine.stateDir + "/restoring.lock") {
@@ -177,7 +253,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     // ---- actions ----
     @objc func doBackup() { runOp { self.outcome(self.engine.manualBackup()) } }
-    @objc func doRestore() { runOp { self.outcome(self.engine.promptRestore()) } }
+    @objc func doRestore() { runOp { self.interactiveRestore(autoDismiss: false) } }
     @objc func openDropbox() {
         try? FileManager.default.createDirectory(atPath: engine.dropboxDir, withIntermediateDirectories: true)
         NSWorkspace.shared.open(URL(fileURLWithPath: engine.dropboxDir))
