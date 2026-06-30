@@ -91,7 +91,7 @@ if args.count > 1 {
 enum IconState { case idle, working, success, failure }
 enum OpOutcome { case success, failure, neutral }
 
-final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
+final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWindowDelegate {
     var statusItem: NSStatusItem!
     var engine: Engine!
     var claude: ClaudeBackup!
@@ -103,6 +103,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     var fdaOK = true
     var zenOn = false                          // Zen is opt-in (Settings.zenEnabled && Zen installed)
     var idleRevert: DispatchWorkItem?
+    var mainWin: NSWindow?                      // unified main window (list of targets + suggestions)
+    var mainDoc: FlippedView?
+    var mainStatus: NSTextField?
     let menu = NSMenu()                       // persistent; repopulated on every open via menuNeedsUpdate
     let header = NSMenuItem(title: "Configgy", action: nil, keyEquivalent: "")
     let fdaItem = NSMenuItem(title: "", action: #selector(openFDAGuide), keyEquivalent: "")
@@ -220,6 +223,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         fdaItem.title = L.t("⚠︎ 授予完整磁碟取用權…", "⚠︎ Grant Full Disk Access…")
         fdaItem.isHidden = fdaOK
         m.addItem(fdaItem)
+        m.addItem(.separator())
+        m.addItem(withTitle: L.t("打開 Configgy 視窗…", "Open Configgy…"), action: #selector(showMain), keyEquivalent: "o").target = self
         m.addItem(.separator())
         m.addItem(withTitle: L.t("備份 Claude 設定", "Back Up Claude Config"), action: #selector(doClaudeBackup), keyEquivalent: "").target = self
         m.addItem(withTitle: L.t("還原 Claude 設定", "Restore Claude Config"), action: #selector(doClaudeRestore), keyEquivalent: "").target = self
@@ -421,6 +426,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
     func info(_ msg: String) {
         _ = engine.sh("/usr/bin/osascript", ["-e", "display dialog \"\(msg)\" buttons {\"\(L.t("好","OK"))\"} default button \"\(L.t("好","OK"))\" with title \"Configgy\""])
+    }
+    func genericRestoreFlow(_ d: TargetDef) -> OpOutcome {
+        let g = GenericBackup(home: engine.home, def: d)
+        let snaps = Array(g.listSnapshots().reversed())
+        if snaps.isEmpty { info(L.t("「\(d.name)」還沒有備份。", "No backup for \"\(d.name)\" yet.")); return .neutral }
+        guard let zip = pickSnapshot(snaps, label: { g.label($0) }, title: "Configgy · \(d.name)", app: d.app) else { return .neutral }
+        if !confirmChanges(g.previewRestore(zip), title: "Configgy · \(d.name)", what: d.name) { return .neutral }
+        return outcome(g.restore(zip))
     }
 
     // ---- generic targets ----
