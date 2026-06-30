@@ -5,135 +5,130 @@
 <h1 align="center">Configgy</h1>
 
 <p align="center">
-  A tiny macOS <b>menubar app</b> that backs up &amp; restores your local config
-  across devices — currently <b>Zen Browser</b> and <b>Claude Code</b>, plus any
-  custom folder.
+  A macOS app that backs up &amp; restores your local config across devices —
+  <b>Zen Browser</b>, <b>Claude Code</b>, and any folder you point it at.
+</p>
+
+<p align="center">
+  Native Swift (AppKit) · menubar agent + a single management window · no dependencies ·
+  backups land in <code>Dropbox / iCloud / Google&nbsp;Drive / a folder</code> under <code>…/Configgy/</code>
 </p>
 
 <p align="center"><b>English</b> · <a href="README.zh-Hant.md">繁體中文</a></p>
-
-<p align="center">
-  Native Swift (AppKit, <code>LSUIElement</code>) · no dependencies · backups land in
-  <code>Dropbox/Apps/Configgy/</code>
-</p>
 
 ---
 
 ## What it does
 
-Configgy quietly lives in your menubar and keeps the *settings* that are painful
-to lose — but which you don't want in a cloud sync — versioned and portable.
-Two targets, two mechanisms:
+Configgy keeps the *settings* that are painful to lose — but that you don't want in a
+blanket cloud sync — versioned, portable, and one click away. It runs as a menubar
+agent; everything you do lives in one window.
 
-| Target | Where | How | Trigger |
-|---|---|---|---|
-| **Zen Browser** | `Apps/Configgy/zen/` | versioned `.zip` snapshots (keeps 10, content-deduped) | **auto** on Zen quit |
-| **Claude Code** | `Apps/Configgy/claude/` | versioned `.zip` snapshots (keeps 10, content-deduped) | **manual** (menu) |
-| **Custom / discovered** | `Apps/Configgy/targets/<id>/` | versioned `.zip` snapshots (absolute-path preserving) | **manual** (menu) |
+| Target | Mechanism | Trigger |
+|---|---|---|
+| **Zen Browser** | versioned `.zip` snapshots (keeps 10, deduped); each zip self-restores via an embedded `restore.sh` | auto on Zen quit |
+| **Claude Code** | versioned `.zip` snapshots of `~/.claude` (+ `~/.agents/skills`); restore reinstalls plugins | manual |
+| **Custom / discovered** | versioned, absolute-path-preserving `.zip` snapshots | manual |
 
-> **No secrets.** Passwords, cookies and history are never copied — those come
-> back through your Mozilla account (Zen) or macOS Keychain (Claude).
+> **No secrets.** Passwords, cookies, history, SSH private keys, and the token-bearing
+> `gh hosts.yml` are never copied — those come back via your Mozilla account / Keychain.
 
-### Zen target — versioned snapshots
-- **Zen fully quits → auto-backup.** Snapshots the *config-tier* profile:
-  `prefs.js`, `user.js`, sessions / workspaces / tabs, containers, Zen Mods
-  (`zen-themes.json` + `chrome/`), keyboard shortcuts, extensions (`.xpi` +
-  `browser-extension-data`), search, handlers, xulstore, session backups.
-  Identical states are skipped (hashed). Keeps the newest **10**.
-- **Zen opens → offer restore.** If the newest cloud backup isn't the one this
-  Mac currently has, a native picker lists every backup (time · host ·
-  workspaces/tabs). Pick one → Configgy **quits Zen, swaps the files in,
-  relaunches Zen.** You can restore **specific workspace(s)** only (checkbox
-  window) and merge them into the current Zen, keeping the rest.
-- Every zip embeds a `restore.sh`, so a machine without Configgy can still
-  self-restore by unzipping and running it.
+### The window
 
-### Claude Code target — versioned snapshots
-- Snapshots the valuable bits of `~/.claude` (+ `~/.agents/skills`): `CLAUDE.md`,
-  settings, `skills/`, `plugins/*.json`, and `projects/*/memory/` — excluding
-  sessions, caches and git clones. Each backup is a dated zip (keeps the newest
-  **10**, identical states deduped), so you have **history & rollback** — pick any
-  past snapshot to restore.
-- Restore is **additive** (no deletes) and reinstalls plugin marketplaces,
-  plugins, and `quarkdown` so symlink/plugin skills come back to life.
+A single window with a capsule tab switching two lists:
 
-### Custom & discovered targets
-Beyond Zen and Claude, Configgy can back up **any** set of files/folders as a
-versioned target — useful for apps that have no cloud sync of their own.
-- **新增備份目標…** — pick files/folders, name it; it becomes its own versioned
-  target (snapshots preserve each file's absolute path, restore puts them back).
-- **掃描建議的設定…** — auto-discovers common sync-less config that exists on this
-  Mac (shell dotfiles, git, `~/.ssh/config`, tmux, Vim/Neovim, Zed, VS Code,
-  terminals, Karabiner, Hammerspoon, GitHub CLI, and prefs for menubar utilities
-  like MonitorControl/Moom/IINA). Secret-free by default — private SSH keys and
-  the token-bearing `gh hosts.yml` are excluded.
+- **已備份保護 / Protected** — your active targets (Claude, Zen if enabled, custom). Each
+  row: app icon, name, *last backup · N snapshots*, and **Back Up** / **Restore** /
+  **Remove** as compact pill buttons that tint on hover (green / orange / red).
+- **建議加入 / Suggestions** — Zen, plus configs discovered on this Mac that have no cloud
+  sync of their own (shell dotfiles, git, `~/.ssh/config`, Zed, VS Code, terminals,
+  Karabiner, Hammerspoon, gh, and menubar utilities like MonitorControl / Moom / IINA).
+  Tap **Add** to start versioning one.
 
-### Preview before restore
-Restoring a Zen backup (full) or a Claude snapshot first shows a **change preview**
-— which files would be modified or added — and asks to confirm. Old files are
-backed up before being overwritten, so a restore is never a blind clobber.
+A **gear → Settings** page (in-window, with an ✕ to close) holds: **Theme**
+(System / Light / Dark), **Enlarge UI** (1.1×), **Launch at Login**, **Backup Location**,
+and **About**. The menubar itself is just *Open Configgy*, *About*, *Quit* (plus an FDA
+warning when needed).
+
+### Touches
+
+- **Live feel** — hover highlights a row; a backup runs a green flowing-light progress
+  bar then the button flashes "✓ Backed up"; restore is orange; removing a target
+  crumbles its row. Light/dark are both first-class (Finder-like light palette).
+- **Preview before restore** — restores show which files would change and confirm first;
+  old files are backed up before being overwritten.
+- **Re-adopt on open** — Configgy scans the backup folder on launch, so targets already
+  backed up (e.g. on another Mac) reappear ready to restore.
+- **Zen is careful** — backing up Zen offers *Cancel · Back up on quit · Back up now*,
+  and "Back up now" confirms again before quitting your browser.
 
 ## Install
 
-1. Build the app (see below) and drop it in `/Applications`.
-2. Launch it — a menubar icon appears.
-3. **Grant Full Disk Access.** macOS never prompts for this automatically, so on
-   first launch Configgy shows a short welcome that opens the right settings pane
-   and highlights the app in Finder. Add `Configgy.app` to **System Settings →
-   Privacy &amp; Security → Full Disk Access**, enable it, and choose *Quit &amp;
-   Reopen*. Without it Configgy can't read or write the Dropbox folder.
-4. **Pick a backup location.** Backups default to Dropbox; if it's not found on
-   launch (or via **Backup Location…** in the menu anytime) you can choose
-   **Dropbox / iCloud Drive / Google Drive / a custom folder**.
-
-The app **is** the background watcher (polls every 2.5 s) — there's no LaunchAgent.
-Optional **Launch at Login** (off by default) and a **Language** switch
-(System / 中文 / English) are in the menu.
+1. Download the `.dmg` from [Releases](https://github.com/rocavence/Configgy-app/releases),
+   drag **Configgy** to Applications.
+2. Self-signed personal tool → Gatekeeper warns; **right-click → Open** the first time.
+3. **Grant Full Disk Access** (the app guides you on first launch) so it can reach the
+   backup folder. macOS never prompts for this automatically.
+4. Pick a **backup location** — Dropbox by default; if none is found you choose Dropbox /
+   iCloud Drive / Google Drive / a custom folder.
 
 ## Build from source
 
-Requires Xcode Command Line Tools (`swift`, `codesign`); no full Xcode needed.
+Requires Xcode Command Line Tools (`swift`, `codesign`); no full Xcode.
 
 ```sh
-swift Scripts/make-icon.swift     # regenerate the icon (optional)
-sh Scripts/make-icon.sh           # → Resources/AppIcon.icns (optional)
 sh Scripts/build-app.sh           # → build/Configgy.app
 cp -R build/Configgy.app /Applications/
-open /Applications/Configgy.app
 ```
 
-The build prefers a stable self-signed identity (`Configgy Self-Signed`, falling
-back to any `Findly Self-Signed` key) so the Full Disk Access grant survives
-rebuilds — ad-hoc signatures change every build and silently drop the grant. Make
-one in *Keychain Access → Certificate Assistant → Create a Certificate* (Code
-Signing, self-signed) if you don't have one.
+The build signs with a stable self-signed identity (`Configgy` / `Findly Self-Signed`) so
+Full Disk Access survives rebuilds.
 
 ## CLI
 
 The same binary runs headless:
 
 ```
-Configgy backup [--force] | list | status
-Configgy restore [<zip> [ws <uuid…>]] | workspaces <zip> | preview <zip>
+Configgy backup [--force] | list | status | preview <zip>
+Configgy restore [<zip> [ws <uuid…>]] | workspaces <zip>
 Configgy claude-backup | claude-list | claude-restore [<zip>] | claude-preview <zip>
 Configgy discover | targets | locations | target-add <id> <name> <path…>
 Configgy target-backup <id> | target-list <id> | target-restore <id> [<zip>] | target-preview <id> [<zip>]
 ```
 
-`preview` / `claude-preview` are dry-runs — they print which files a restore would
-change, without touching anything.
-
-`CONFIGGY_TEST=1` treats Zen as closed and skips plugin reinstall (used by tests).
-
-## Notes
-
-- Each Zen zip is the full config tier incl. extensions (~tens of MB); 10 kept ⇒
-  a few hundred MB in Dropbox. Lower `keep` in `Engine.swift` to trim.
-- Accepting a Zen restore makes Zen **restart once** (it already read its session
-  on open; relaunching is the only way to reload it).
-- "Newest" is ranked by the timestamp in the filename, across all devices.
-- `legacy-node/` is the original Node prototype, kept for reference only.
-
 ---
+
+## Design &amp; development notes
+
+Configgy started life as **Zennly**, a one-trick menubar app that zipped the Zen Browser
+profile to Dropbox on quit and offered a cross-device restore. It grew from there:
+
+- **From one app to a model.** Claude Code config joined as a second target, then the idea
+  generalized: a *target* is just "a set of paths, versioned as dated zips, with history,
+  diff-preview, and additive restore." Zen and the generic targets share that contract;
+  Claude is the same shape with a plugin-reinstall step. Zip snapshots beat a single
+  rsync mirror because you get rollback for free, and per-host filenames avoid
+  cross-machine conflicts.
+- **Safe by default.** Discovery only suggests sync-less config and deliberately excludes
+  secrets (SSH keys, `gh` tokens). Restores preview their diff and pre-back-up whatever
+  they overwrite. Destructive actions confirm — and Zen never closes your browser without
+  a second yes.
+- **Opt-in, not assumed.** Out of the box only Claude is on; Zen and everything else is a
+  suggestion you adopt. The app also launches fine on Macs without Zen.
+- **The UI was iterated hard.** It converged on a single Mole-inspired window: one list,
+  inline actions, an in-window settings page instead of a deep menubar. The visual pass
+  drew on the `ui-ux-pro` and `frontend-design` skills — an 8-pt rhythm, clustered
+  right-aligned actions, custom pill buttons with controlled padding (AppKit's bezel
+  metrics don't scale cleanly), hover-only semantic colour, and a de-emphasised
+  destructive action. A real gotcha shaped the palette: the first build used white-alpha
+  overlays that were invisible in Light mode, so colours are now appearance-aware
+  (lighten on dark, darken on light) and re-resolve on appearance change.
+- **macOS sharp edges met along the way.** `NSStatusItem` ignores menu reassignment from
+  inside a menu action (so the menu is repopulated in `menuNeedsUpdate`); a window's close
+  *animation* can crash if released mid-transaction (so zoom rebuilds defer + `orderOut`);
+  Full Disk Access never prompts (so there's a guided onboarding); overlay scrollers clip
+  a row's corner (so rows reserve a right gutter).
+- **Built almost entirely through conversation** with Claude Code (Opus) — each change was
+  compiled, installed, and committed in a tight loop; the UI was tuned from screenshots.
 
 <sub>Licensed under <a href="LICENSE">CC BY-NC-SA 4.0</a> · a personal tool, shared as-is — no warranty · built with Claude Code.</sub>
