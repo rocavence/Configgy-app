@@ -33,13 +33,17 @@ extension AppDelegate {
         sub.frame = NSRect(x: 24, y: h - 70, width: 400, height: 16); sub.autoresizingMask = [.minYMargin]
         sub.identifier = NSUserInterfaceItemIdentifier("subtitle"); bg.addSubview(sub)
 
-        func tool(_ t: String, _ sel: Selector, x: CGFloat, wdt: CGFloat) -> NSButton {
-            let b = NSButton(title: t, target: self, action: sel); b.bezelStyle = .rounded; b.controlSize = .small
-            b.font = .systemFont(ofSize: 11); b.frame = NSRect(x: x, y: h - 50, width: wdt, height: 24)
-            b.autoresizingMask = [.minXMargin, .minYMargin]; bg.addSubview(b); return b
+        func tool(_ sym: String, _ tip: String, _ sel: Selector, x: CGFloat) {
+            let b = NSButton(frame: NSRect(x: x, y: h - 53, width: 30, height: 30))
+            b.bezelStyle = .rounded; b.imagePosition = .imageOnly
+            let cfg = NSImage.SymbolConfiguration(pointSize: 14, weight: .regular)
+            b.image = NSImage(systemSymbolName: sym, accessibilityDescription: tip)?.withSymbolConfiguration(cfg)
+            b.toolTip = tip; b.target = self; b.action = sel
+            b.autoresizingMask = [.minXMargin, .minYMargin]; bg.addSubview(b)
         }
-        _ = tool(L.t("加入自訂備份", "Add Custom"), #selector(addFolderFromMain), x: w - 196, wdt: 140)
-        _ = tool("↻", #selector(refreshMainBtn), x: w - 48, wdt: 34)
+        tool("folder.badge.plus", L.t("加入自訂備份", "Add Custom Backup"), #selector(addFolderFromMain), x: w - 122)
+        tool("arrow.clockwise", L.t("重新掃描", "Rescan"), #selector(refreshMainBtn), x: w - 84)
+        tool("folder", L.t("開啟備份資料夾", "Open Backup Folder"), #selector(openDropbox), x: w - 46)
 
         let scroll = NSScrollView(frame: NSRect(x: 14, y: 14, width: w - 28, height: h - 92))
         scroll.hasVerticalScroller = true; scroll.drawsBackground = false; scroll.autoresizingMask = [.width, .height]
