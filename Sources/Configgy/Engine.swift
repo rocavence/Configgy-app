@@ -281,6 +281,17 @@ final class Engine {
 
     // ---------- restore ----------
     @discardableResult
+    // what a full restore of `zip` would change in the live profile
+    func previewRestore(_ zip: String) -> ChangeSet {
+        let zpath = dropboxDir + "/" + zip
+        guard fm.fileExists(atPath: zpath) else { return ChangeSet() }
+        let tmp = (NSTemporaryDirectory() as NSString).appendingPathComponent("configgy-zd-\(UUID().uuidString)")
+        defer { try? fm.removeItem(atPath: tmp) }
+        try? fm.createDirectory(atPath: tmp, withIntermediateDirectories: true)
+        sh("/usr/bin/unzip", ["-qo", zpath, "-d", tmp])
+        return ConfigDiff.compare(snapshot: tmp + "/snapshot/profile", live: profileDir)
+    }
+
     func restore(_ zip: String, scope: RestoreScope = .full) -> RestoreResult {
         let zpath = dropboxDir + "/" + zip
         guard fm.fileExists(atPath: zpath) else { log("找不到備份：\(zip)"); return .failed }

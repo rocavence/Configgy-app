@@ -25,7 +25,7 @@ Two targets, two mechanisms:
 | Target | Where | How | Trigger |
 |---|---|---|---|
 | **Zen Browser** | `Apps/Configgy/zen/` | versioned `.zip` snapshots (keeps 10, content-deduped) | **auto** on Zen quit |
-| **Claude Code** | `Apps/Configgy/claude/` | `rsync` mirror | **manual** (menu) |
+| **Claude Code** | `Apps/Configgy/claude/` | versioned `.zip` snapshots (keeps 10, content-deduped) | **manual** (menu) |
 
 > **No secrets.** Passwords, cookies and history are never copied — those come
 > back through your Mozilla account (Zen) or macOS Keychain (Claude).
@@ -44,12 +44,19 @@ Two targets, two mechanisms:
 - Every zip embeds a `restore.sh`, so a machine without Configgy can still
   self-restore by unzipping and running it.
 
-### Claude Code target — rsync mirror
-- Mirrors the valuable bits of `~/.claude` (+ `~/.agents/skills`): `CLAUDE.md`,
+### Claude Code target — versioned snapshots
+- Snapshots the valuable bits of `~/.claude` (+ `~/.agents/skills`): `CLAUDE.md`,
   settings, `skills/`, `plugins/*.json`, and `projects/*/memory/` — excluding
-  sessions, caches and git clones.
-- Restore is **additive** (no `--delete`) and reinstalls plugin marketplaces,
+  sessions, caches and git clones. Each backup is a dated zip (keeps the newest
+  **10**, identical states deduped), so you have **history & rollback** — pick any
+  past snapshot to restore.
+- Restore is **additive** (no deletes) and reinstalls plugin marketplaces,
   plugins, and `quarkdown` so symlink/plugin skills come back to life.
+
+### Preview before restore
+Restoring a Zen backup (full) or a Claude snapshot first shows a **change preview**
+— which files would be modified or added — and asks to confirm. Old files are
+backed up before being overwritten, so a restore is never a blind clobber.
 
 ## Install
 
@@ -87,10 +94,12 @@ The same binary runs headless:
 
 ```
 Configgy backup [--force] | list | status
-Configgy restore [<zip> [ws <uuid…>]]
-Configgy workspaces <zip>
-Configgy claude-backup | claude-restore
+Configgy restore [<zip> [ws <uuid…>]] | workspaces <zip> | preview <zip>
+Configgy claude-backup | claude-list | claude-restore [<zip>] | claude-preview <zip>
 ```
+
+`preview` / `claude-preview` are dry-runs — they print which files a restore would
+change, without touching anything.
 
 `CONFIGGY_TEST=1` treats Zen as closed and skips plugin reinstall (used by tests).
 

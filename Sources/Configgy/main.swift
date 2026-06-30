@@ -7,7 +7,18 @@ if args.count > 1 {
     let cliHome = ProcessInfo.processInfo.environment["HOME"] ?? NSHomeDirectory()
     switch args[1] {                                   // Claude target needs no Zen profile
     case "claude-backup": ClaudeBackup(home: cliHome).backup(); exit(0)
-    case "claude-restore": ClaudeBackup(home: cliHome).restore(); exit(0)
+    case "claude-restore": ClaudeBackup(home: cliHome).restore(args.count > 2 ? args[2] : nil); exit(0)
+    case "claude-list":
+        let c = ClaudeBackup(home: cliHome)
+        for z in c.listSnapshots().reversed() { print(z); print("    " + c.label(z)) }
+        exit(0)
+    case "claude-preview":
+        if args.count > 2 {
+            let cs = ClaudeBackup(home: cliHome).previewRestore(args[2])
+            print("modified: \(cs.modified.count), added: \(cs.added.count)")
+            for m in cs.modified { print("  ~ \(m)") }; for a in cs.added { print("  + \(a)") }
+        } else { print("Usage: Configgy claude-preview <zip>") }
+        exit(0)
     default: break
     }
     do {
@@ -29,6 +40,12 @@ if args.count > 1 {
         case "workspaces":
             if args.count > 2 { for w in e.workspacesIn(args[2]) { print("\(w.uuid)\t\(w.label)") } }
             else { print("Usage: Configgy workspaces <zip>") }
+        case "preview":
+            if args.count > 2 {
+                let cs = e.previewRestore(args[2])
+                print("modified: \(cs.modified.count), added: \(cs.added.count)")
+                for m in cs.modified { print("  ~ \(m)") }; for a in cs.added { print("  + \(a)") }
+            } else { print("Usage: Configgy preview <zip>") }
         case "restore":
             if args.count >= 5, args[3] == "ws" {
                 e.restoreWorkspaces(args[2], uuids: Set(args[4...]))
@@ -285,6 +302,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let (code, sd) = engine.sh("/usr/bin/osascript", ["-e", scopeDialog])
         if code != 0 { dismiss(); return .neutral }
         if !(String(data: sd, encoding: .utf8) ?? "").contains("選擇工作區") {
+            let cs = engine.previewRestore(zip)
+            if !confirmChanges(cs, title: "Configgy · 還原", what: "Zen 設定") { dismiss(); return .neutral }
             return outcome(engine.restore(zip, scope: .full))
         }
         let wss = engine.workspacesIn(zip)
@@ -293,6 +312,39 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         DispatchQueue.main.sync { picked = WorkspacePicker.run(wss) }       // native checkbox UI on main
         guard let uuids = picked, !uuids.isEmpty else { dismiss(); return .neutral }
         return outcome(engine.restoreWorkspaces(zip, uuids: uuids))
+    }
+
+    // preview a restore's file changes and ask the user to confirm (osascript; bg-safe)
+    func confirmChanges(_ cs: ChangeSet, title: String, what: String) -> Bool {
+        func esc(_ s: String) -> String { s.replacingOccurrences(of: "\\", with: "/").replacingOccurrences(of: "\"", with: "'") }
+        let body: String
+        if cs.isEmpty {
+            body = "這份備份與目前\(what)沒有差異。仍要套用嗎？"
+        } else {
+            let lines = cs.modified.map { "~ " + $0 } + cs.added.map { "+ " + $0 }
+            let shown = lines.prefix(20).map(esc).joined(separator: "\\n")
+            let more = lines.count > 20 ? "\\n… 還有 \(lines.count - 20) 項" : ""
+            body = "這次會變更 \(cs.count) 個檔案（修改 \(cs.modified.count)、新增 \(cs.added.count)）：\\n\\n\(shown)\(more)\\n\\n舊檔會先備份。確定還原？"
+        }
+        let d = "display dialog \"\(body)\" buttons {\"取消\", \"確定還原\"} default button \"確定還原\" cancel button \"取消\" with title \"\(esc(title))\""
+        return engine.sh("/usr/bin/osascript", ["-e", d]).0 == 0
+    }
+
+    func claudeRestoreFlow() -> OpOutcome {
+        let snaps = Array(claude.listSnapshots().reversed())   // newest first
+        if snaps.isEmpty {
+            _ = engine.sh("/usr/bin/osascript", ["-e", "display dialog \"Dropbox 還沒有 Claude 設定備份。\" buttons {\"好\"} default button \"好\" with title \"Configgy · Claude\""])
+            return .neutral
+        }
+        var map: [String: String] = [:]
+        let labels = snaps.map { z -> String in let l = claude.label(z); map[l] = z; return l }
+        let listLit = "{" + labels.map { "\"" + $0.replacingOccurrences(of: "\"", with: "\\\"") + "\"" }.joined(separator: ", ") + "}"
+        let pick = "choose from list \(listLit) with title \"Configgy · Claude\" with prompt \"還原哪一份 Claude 設定？\" OK button name \"下一步\" cancel button name \"取消\""
+        let chosen = String(data: engine.sh("/usr/bin/osascript", ["-e", pick]).1, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? "false"
+        if chosen.isEmpty || chosen == "false" { return .neutral }
+        guard let zip = map[chosen] else { return .neutral }
+        if !confirmChanges(claude.previewRestore(zip), title: "Configgy · Claude 還原", what: "Claude 設定") { return .neutral }
+        return outcome(claude.restore(zip))
     }
 
     // ---- watch loop ----
@@ -317,7 +369,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     @objc func doBackup() { guard requireFDA() else { return }; runOp { self.outcome(self.engine.manualBackup()) } }
     @objc func doRestore() { guard requireFDA() else { return }; runOp { self.interactiveRestore(autoDismiss: false) } }
     @objc func doClaudeBackup() { guard requireFDA() else { return }; runOp { self.outcome(self.claude.backup()) } }
-    @objc func doClaudeRestore() { guard requireFDA() else { return }; runOp { self.outcome(self.claude.restore()) } }
+    @objc func doClaudeRestore() { guard requireFDA() else { return }; runOp { self.claudeRestoreFlow() } }
     @objc func openDropbox() {
         let base = (engine.dropboxDir as NSString).deletingLastPathComponent   // Apps/Configgy
         try? FileManager.default.createDirectory(atPath: base, withIntermediateDirectories: true)
