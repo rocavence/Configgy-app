@@ -19,6 +19,29 @@ if args.count > 1 {
             for m in cs.modified { print("  ~ \(m)") }; for a in cs.added { print("  + \(a)") }
         } else { print("Usage: Configgy claude-preview <zip>") }
         exit(0)
+    case "targets":
+        for d in TargetStore.load(cliHome) { print("\(d.id)\t\(d.name)\t\(d.paths.joined(separator: ", "))") }
+        exit(0)
+    case "discover":
+        for it in TargetStore.discover(cliHome) { print("\(it.id)\t\(it.name)\t\(it.paths.joined(separator: ", "))") }
+        exit(0)
+    case "target-add":
+        if args.count >= 5 { TargetStore.add(TargetDef(id: args[2], name: args[3], paths: Array(args[4...])), home: cliHome); print("added \(args[2])") }
+        else { print("Usage: Configgy target-add <id> <name> <path...>") }
+        exit(0)
+    case "target-backup", "target-list", "target-preview", "target-restore":
+        guard args.count > 2, let d = TargetStore.load(cliHome).first(where: { $0.id == args[2] }) else { print("unknown target id"); exit(1) }
+        let g = GenericBackup(home: cliHome, def: d)
+        switch args[1] {
+        case "target-backup": g.backup()
+        case "target-list": for z in g.listSnapshots().reversed() { print(z); print("    " + g.label(z)) }
+        case "target-restore": g.restore(args.count > 3 ? args[3] : nil)
+        default:   // target-preview
+            let cs = g.previewRestore(args.count > 3 ? args[3] : (g.newestSnapshot() ?? ""))
+            print("modified: \(cs.modified.count), added: \(cs.added.count)")
+            for m in cs.modified { print("  ~ \(m)") }; for a in cs.added { print("  + \(a)") }
+        }
+        exit(0)
     default: break
     }
     do {
@@ -201,6 +224,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         m.addItem(withTitle: "備份 Claude 設定", action: #selector(doClaudeBackup), keyEquivalent: "").target = self
         m.addItem(withTitle: "還原 Claude 設定", action: #selector(doClaudeRestore), keyEquivalent: "").target = self
         m.addItem(.separator())
+        // user-defined / discovered targets, each with a backup/restore submenu
+        for d in TargetStore.load(engine.home) {
+            let sub = NSMenu()
+            let b = sub.addItem(withTitle: "立即備份", action: #selector(targetBackup(_:)), keyEquivalent: ""); b.target = self; b.representedObject = d.id
+            let r = sub.addItem(withTitle: "還原…", action: #selector(targetRestore(_:)), keyEquivalent: ""); r.target = self; r.representedObject = d.id
+            sub.addItem(.separator())
+            let x = sub.addItem(withTitle: "移除此目標", action: #selector(targetRemove(_:)), keyEquivalent: ""); x.target = self; x.representedObject = d.id
+            let item = NSMenuItem(title: d.name, action: nil, keyEquivalent: ""); item.submenu = sub
+            m.addItem(item)
+        }
+        m.addItem(withTitle: "新增備份目標…", action: #selector(addTarget), keyEquivalent: "").target = self
+        m.addItem(withTitle: "掃描建議的設定…", action: #selector(discoverTargets), keyEquivalent: "").target = self
+        m.addItem(.separator())
         m.addItem(pauseItem)
         m.addItem(withTitle: "開啟備份資料夾", action: #selector(openDropbox), keyEquivalent: "").target = self
         m.addItem(.separator())
@@ -345,6 +381,86 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         guard let zip = map[chosen] else { return .neutral }
         if !confirmChanges(claude.previewRestore(zip), title: "Configgy · Claude 還原", what: "Claude 設定") { return .neutral }
         return outcome(claude.restore(zip))
+    }
+
+    // ---- generic targets ----
+    func defFor(_ sender: Any?) -> TargetDef? {
+        guard let id = (sender as? NSMenuItem)?.representedObject as? String else { return nil }
+        return TargetStore.load(engine.home).first { $0.id == id }
+    }
+    @objc func targetBackup(_ sender: NSMenuItem) {
+        guard requireFDA(), let d = defFor(sender) else { return }
+        runOp { self.outcome(GenericBackup(home: self.engine.home, def: d).backup()) }
+    }
+    @objc func targetRestore(_ sender: NSMenuItem) {
+        guard requireFDA(), let d = defFor(sender) else { return }
+        runOp { self.genericRestoreFlow(d) }
+    }
+    func genericRestoreFlow(_ d: TargetDef) -> OpOutcome {
+        let g = GenericBackup(home: engine.home, def: d)
+        let snaps = Array(g.listSnapshots().reversed())
+        if snaps.isEmpty {
+            _ = engine.sh("/usr/bin/osascript", ["-e", "display dialog \"「\(d.name)」還沒有備份。\" buttons {\"好\"} default button \"好\" with title \"Configgy\""])
+            return .neutral
+        }
+        var map: [String: String] = [:]
+        let labels = snaps.map { z -> String in let l = g.label(z); map[l] = z; return l }
+        let listLit = "{" + labels.map { "\"" + $0.replacingOccurrences(of: "\"", with: "\\\"") + "\"" }.joined(separator: ", ") + "}"
+        let pick = "choose from list \(listLit) with title \"Configgy · \(d.name)\" with prompt \"還原哪一份？\" OK button name \"下一步\" cancel button name \"取消\""
+        let chosen = String(data: engine.sh("/usr/bin/osascript", ["-e", pick]).1, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? "false"
+        if chosen.isEmpty || chosen == "false" { return .neutral }
+        guard let zip = map[chosen] else { return .neutral }
+        if !confirmChanges(g.previewRestore(zip), title: "Configgy · \(d.name)", what: d.name) { return .neutral }
+        return outcome(g.restore(zip))
+    }
+    @objc func targetRemove(_ sender: NSMenuItem) {
+        guard let d = defFor(sender) else { return }
+        let ok = engine.sh("/usr/bin/osascript", ["-e", "display dialog \"從清單移除「\(d.name)」？（雲端既有備份不會刪）\" buttons {\"取消\",\"移除\"} default button \"取消\" with title \"Configgy\""]).0 == 0
+        if ok { TargetStore.remove(d.id, home: engine.home); buildMenu() }
+    }
+    @objc func addTarget() {
+        guard requireFDA() else { return }
+        let panel = NSOpenPanel()
+        panel.canChooseFiles = true; panel.canChooseDirectories = true; panel.allowsMultipleSelection = true
+        panel.message = "選擇要備份的設定檔或資料夾（可多選）"
+        panel.directoryURL = URL(fileURLWithPath: engine.home)
+        NSApp.activate(ignoringOtherApps: true)
+        guard panel.runModal() == .OK, !panel.urls.isEmpty else { return }
+        let a = NSAlert(); a.messageText = "為這個備份目標命名"; a.addButton(withTitle: "建立"); a.addButton(withTitle: "取消")
+        let tf = NSTextField(frame: NSRect(x: 0, y: 0, width: 240, height: 24))
+        tf.stringValue = panel.urls.first!.deletingPathExtension().lastPathComponent
+        a.accessoryView = tf
+        guard a.runModal() == .alertFirstButtonReturn else { return }
+        let name = tf.stringValue.isEmpty ? panel.urls.first!.lastPathComponent : tf.stringValue
+        let id = slug(name)
+        let paths = panel.urls.map { u -> String in
+            let s = u.path
+            return s.hasPrefix(engine.home + "/") ? "~" + s.dropFirst(engine.home.count) : s
+        }
+        TargetStore.add(TargetDef(id: id, name: name, paths: paths), home: engine.home)
+        buildMenu()
+    }
+    func slug(_ s: String) -> String {
+        let cleaned = s.lowercased().map { ($0.isLetter || $0.isNumber) ? $0 : "-" }
+        let j = String(cleaned).split(separator: "-").joined(separator: "-")
+        return j.isEmpty ? "target-\(abs(s.hashValue) % 100000)" : j
+    }
+    @objc func discoverTargets() {
+        guard requireFDA() else { return }
+        let items = TargetStore.discover(engine.home)
+        if items.isEmpty {
+            _ = engine.sh("/usr/bin/osascript", ["-e", "display dialog \"沒找到可備份的常見設定。\" buttons {\"好\"} default button \"好\" with title \"Configgy\""])
+            return
+        }
+        let picks = items.map { (uuid: $0.id, label: $0.note.isEmpty ? $0.name : "\($0.name) · \($0.note)") }
+        guard let sel = WorkspacePicker.run(picks), !sel.isEmpty else { return }   // on main (menu action)
+        var defs = TargetStore.load(engine.home)
+        for it in items where sel.contains(it.id) {
+            defs.removeAll { $0.id == it.id }
+            defs.append(TargetDef(id: it.id, name: it.name, paths: it.paths, excludes: it.excludes))
+        }
+        TargetStore.save(defs, home: engine.home)
+        buildMenu()
     }
 
     // ---- watch loop ----

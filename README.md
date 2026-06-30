@@ -26,6 +26,7 @@ Two targets, two mechanisms:
 |---|---|---|---|
 | **Zen Browser** | `Apps/Configgy/zen/` | versioned `.zip` snapshots (keeps 10, content-deduped) | **auto** on Zen quit |
 | **Claude Code** | `Apps/Configgy/claude/` | versioned `.zip` snapshots (keeps 10, content-deduped) | **manual** (menu) |
+| **Custom / discovered** | `Apps/Configgy/targets/<id>/` | versioned `.zip` snapshots (absolute-path preserving) | **manual** (menu) |
 
 > **No secrets.** Passwords, cookies and history are never copied — those come
 > back through your Mozilla account (Zen) or macOS Keychain (Claude).
@@ -52,6 +53,17 @@ Two targets, two mechanisms:
   past snapshot to restore.
 - Restore is **additive** (no deletes) and reinstalls plugin marketplaces,
   plugins, and `quarkdown` so symlink/plugin skills come back to life.
+
+### Custom & discovered targets
+Beyond Zen and Claude, Configgy can back up **any** set of files/folders as a
+versioned target — useful for apps that have no cloud sync of their own.
+- **新增備份目標…** — pick files/folders, name it; it becomes its own versioned
+  target (snapshots preserve each file's absolute path, restore puts them back).
+- **掃描建議的設定…** — auto-discovers common sync-less config that exists on this
+  Mac (shell dotfiles, git, `~/.ssh/config`, tmux, Vim/Neovim, Zed, VS Code,
+  terminals, Karabiner, Hammerspoon, GitHub CLI, and prefs for menubar utilities
+  like MonitorControl/Moom/IINA). Secret-free by default — private SSH keys and
+  the token-bearing `gh hosts.yml` are excluded.
 
 ### Preview before restore
 Restoring a Zen backup (full) or a Claude snapshot first shows a **change preview**
@@ -96,6 +108,8 @@ The same binary runs headless:
 Configgy backup [--force] | list | status
 Configgy restore [<zip> [ws <uuid…>]] | workspaces <zip> | preview <zip>
 Configgy claude-backup | claude-list | claude-restore [<zip>] | claude-preview <zip>
+Configgy discover | targets | target-add <id> <name> <path…>
+Configgy target-backup <id> | target-list <id> | target-restore <id> [<zip>] | target-preview <id> [<zip>]
 ```
 
 `preview` / `claude-preview` are dry-runs — they print which files a restore would
