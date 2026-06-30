@@ -232,8 +232,20 @@ final class Engine {
     func manualBackup() -> BackupResult {
         var weClosed = false
         if zenRunning() {
-            let dialog = "display dialog \"Zen 還開著。備份需要 Zen 完全關閉（設定檔關閉時才寫定）。要關閉 Zen 並備份嗎？（備份完會自動重開）\" buttons {\"取消\", \"關閉並備份\"} default button \"關閉並備份\" with title \"Configgy\" with icon note"
-            if sh("/usr/bin/osascript", ["-e", dialog]).0 != 0 { return .skipped }   // cancelled
+            // Zen must be fully closed to write its session files. Offer: defer (auto-backup
+            // next time you quit Zen) vs back up now (which closes Zen — confirmed again).
+            let zh = L.lang == .zh
+            let body = zh ? "Zen 還開著。備份需要 Zen 完全關閉才會寫定設定檔。\\n\\n• 關閉後自動備份：現在先不關，下次你自己關閉 Zen 時自動備份\\n• 立即備份：現在就關閉並重新開啟 Zen"
+                          : "Zen is open. Backup needs Zen fully closed to flush its session files.\\n\\n• Back up on quit: leave it open now; auto-back up next time you quit Zen\\n• Back up now: close & reopen Zen right now"
+            let cancelB = zh ? "取消" : "Cancel", deferB = zh ? "關閉後自動備份" : "Back up on quit", nowB = zh ? "立即備份" : "Back up now"
+            let d1 = "display dialog \"\(body)\" buttons {\"\(cancelB)\", \"\(deferB)\", \"\(nowB)\"} cancel button \"\(cancelB)\" default button \"\(deferB)\" with title \"Configgy\" with icon note"
+            let (c1, out1) = sh("/usr/bin/osascript", ["-e", d1])
+            if c1 != 0 { return .skipped }                                   // 取消 — do NOT touch Zen
+            if !(String(data: out1, encoding: .utf8) ?? "").contains(nowB) { return .skipped }  // defer → auto-watch handles it on quit
+            // second confirmation before actually closing the browser
+            let warn = zh ? "這會立刻關閉並重新開啟 Zen，確定？" : "This will quit and relaunch Zen now. Continue?"
+            let d2 = "display dialog \"\(warn)\" buttons {\"\(cancelB)\", \"\(zh ? "關閉並備份" : "Quit & Back Up")\"} cancel button \"\(cancelB)\" default button \"\(zh ? "關閉並備份" : "Quit & Back Up")\" with title \"Configgy\" with icon caution"
+            if sh("/usr/bin/osascript", ["-e", d2]).0 != 0 { return .skipped }
             sh("/usr/bin/osascript", ["-e", "tell application \"Zen\" to quit"])
             for _ in 0..<40 where zenRunning() { Thread.sleep(forTimeInterval: 0.5) }
             weClosed = true
