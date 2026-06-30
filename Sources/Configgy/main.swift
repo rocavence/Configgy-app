@@ -96,54 +96,6 @@ if args.count > 1 {
 enum IconState { case idle, working, success, failure }
 enum OpOutcome { case success, failure, neutral }
 
-// Native multi-select checkbox window. Must run on main. Generic — used both for
-// choosing Zen workspaces and for choosing which configs to add as backup targets.
-final class ModalResponder: NSObject {
-    @objc func ok() { NSApp.stopModal(withCode: .OK) }
-    @objc func cancel() { NSApp.stopModal(withCode: .cancel) }
-}
-enum CheckboxPicker {
-    static func run(_ items: [(uuid: String, label: String)], title: String, prompt: String, ok okTitle: String) -> Set<String>? {
-        let pad: CGFloat = 20, rowH: CGFloat = 30, width: CGFloat = 460
-        let h = CGFloat(items.count) * rowH + 112
-        let panel = NSPanel(contentRect: NSRect(x: 0, y: 0, width: width, height: h),
-                            styleMask: [.titled], backing: .buffered, defer: false)
-        panel.title = title
-        guard let content = panel.contentView else { return nil }
-
-        let head = NSTextField(labelWithString: prompt)
-        head.font = .boldSystemFont(ofSize: 13)
-        head.frame = NSRect(x: pad, y: h - 44, width: width - 2 * pad, height: 20)
-        content.addSubview(head)
-
-        var checks: [NSButton] = []
-        for (i, it) in items.enumerated() {
-            let b = NSButton(checkboxWithTitle: it.label, target: nil, action: nil)
-            b.state = .on
-            b.frame = NSRect(x: pad, y: h - 74 - CGFloat(i) * rowH, width: width - 2 * pad, height: rowH)
-            content.addSubview(b); checks.append(b)
-        }
-
-        let resp = ModalResponder()
-        let cancel = NSButton(title: L.t("取消", "Cancel"), target: resp, action: #selector(ModalResponder.cancel))
-        cancel.bezelStyle = .rounded; cancel.keyEquivalent = "\u{1b}"
-        cancel.frame = NSRect(x: width - 204, y: 16, width: 92, height: 30)
-        let ok = NSButton(title: okTitle, target: resp, action: #selector(ModalResponder.ok))
-        ok.bezelStyle = .rounded; ok.keyEquivalent = "\r"
-        ok.frame = NSRect(x: width - 106, y: 16, width: 92, height: 30)
-        content.addSubview(cancel); content.addSubview(ok)
-
-        panel.center()
-        NSApp.activate(ignoringOtherApps: true)
-        let code = NSApp.runModal(for: panel)
-        panel.orderOut(nil)
-        guard code == .OK else { return nil }
-        var sel = Set<String>()
-        for (i, b) in checks.enumerated() where b.state == .on { sel.insert(items[i].uuid) }
-        return sel
-    }
-}
-
 final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     var statusItem: NSStatusItem!
     var engine: Engine!
@@ -285,8 +237,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         // each backs up to its own versioned zip under targets/<id>/.
         let defs = TargetStore.load(engine.home)
         for d in defs {
-            let b = m.addItem(withTitle: L.t("備份 \(d.name)（立即）", "Back Up \(d.name) Now"), action: #selector(targetBackup(_:)), keyEquivalent: ""); b.target = self; b.representedObject = d.id
-            let r = m.addItem(withTitle: L.t("還原 \(d.name)…", "Restore \(d.name)…"), action: #selector(targetRestore(_:)), keyEquivalent: ""); r.target = self; r.representedObject = d.id
+            let ico = Icons.menuIcon(d.app)
+            let b = m.addItem(withTitle: L.t("備份 \(d.name)（立即）", "Back Up \(d.name) Now"), action: #selector(targetBackup(_:)), keyEquivalent: ""); b.target = self; b.representedObject = d.id; b.image = ico
+            let r = m.addItem(withTitle: L.t("還原 \(d.name)…", "Restore \(d.name)…"), action: #selector(targetRestore(_:)), keyEquivalent: ""); r.target = self; r.representedObject = d.id; r.image = ico
         }
         if !defs.isEmpty { m.addItem(.separator()) }
         m.addItem(withTitle: L.t("新增自訂備份資料夾…", "Add Custom Backup Folder…"), action: #selector(addTarget), keyEquivalent: "").target = self
@@ -400,14 +353,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         if zips.isEmpty { return .neutral }
         func dismiss() { if autoDismiss { var st = engine.readState(); st.dismissedZip = engine.newestZip(); engine.writeState(st) } }
 
-        var map: [String: String] = [:]
-        let labels = zips.map { z -> String in let l = engine.label(z); map[l] = z; return l }
-        let listLit = "{" + labels.map { "\"" + $0.replacingOccurrences(of: "\"", with: "\\\"") + "\"" }.joined(separator: ", ") + "}"
         let cancelBtn = L.t("取消", "Cancel"), wsBtn = L.t("選擇工作區", "Choose Workspaces"), fullBtn = L.t("完整還原", "Full Restore")
-        let pick = "choose from list \(listLit) with title \"Configgy\" with prompt \"\(L.t("要還原哪一份備份？", "Which backup to restore?"))\" OK button name \"\(L.t("下一步", "Next"))\" cancel button name \"\(cancelBtn)\""
-        let chosen = String(data: engine.sh("/usr/bin/osascript", ["-e", pick]).1, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? "false"
-        if chosen.isEmpty || chosen == "false" { dismiss(); return .neutral }
-        guard let zip = map[chosen] else { return .neutral }
+        var pickedZip: String?
+        let rows = zips.map { PickerRow(id: $0, title: engine.label($0), subtitle: "", icon: Icons.app("app.zen_browser.zen")) }
+        DispatchQueue.main.sync {
+            pickedZip = PickerWindow.chooseOne(title: "Configgy · Zen",
+                prompt: L.t("要還原哪一份備份？", "Which backup to restore?"), items: rows, ok: L.t("下一步", "Next"))
+        }
+        guard let zip = pickedZip else { dismiss(); return .neutral }
 
         let scopeBody = L.t("要怎麼套用這份備份？\\n\\n• 完整還原：整個 Zen 設定都換成這份\\n• 選擇工作區：勾選要併進目前 Zen 的工作區",
                             "How to apply this backup?\\n\\n• Full Restore: replace the whole Zen config\\n• Choose Workspaces: merge selected workspaces into Zen")
@@ -422,10 +375,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let wss = engine.workspacesIn(zip)
         if wss.isEmpty { return .failure }
         var picked: Set<String>?
+        let wrows = wss.map { PickerRow(id: $0.uuid, title: $0.label, subtitle: "", icon: Icons.app("app.zen_browser.zen")) }
         DispatchQueue.main.sync {
-            picked = CheckboxPicker.run(wss, title: L.t("Configgy · 還原", "Configgy · Restore"),
-                                        prompt: L.t("勾選要併進目前 Zen 的工作區：", "Select workspaces to merge into Zen:"),
-                                        ok: L.t("還原", "Restore"))
+            picked = PickerWindow.chooseMany(title: L.t("Configgy · 還原", "Configgy · Restore"),
+                prompt: L.t("勾選要併進目前 Zen 的工作區：", "Select workspaces to merge into Zen:"), items: wrows, ok: L.t("還原", "Restore"))
         }
         guard let uuids = picked, !uuids.isEmpty else { dismiss(); return .neutral }
         return outcome(engine.restoreWorkspaces(zip, uuids: uuids))
@@ -451,19 +404,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     func claudeRestoreFlow() -> OpOutcome {
         let snaps = Array(claude.listSnapshots().reversed())   // newest first
         if snaps.isEmpty { info(L.t("Dropbox 還沒有 Claude 設定備份。", "No Claude config backup yet.")); return .neutral }
-        guard let zip = pickSnapshot(snaps, label: { self.claude.label($0) }, title: "Configgy · Claude") else { return .neutral }
+        guard let zip = pickSnapshot(snaps, label: { self.claude.label($0) }, title: "Configgy · Claude", app: "com.anthropic.claude") else { return .neutral }
         if !confirmChanges(claude.previewRestore(zip), title: L.t("Configgy · Claude 還原", "Configgy · Restore Claude"), what: L.t("Claude 設定", "Claude config")) { return .neutral }
         return outcome(claude.restore(zip))
     }
-    // shared snapshot chooser (osascript list) used by Claude + generic restores
-    func pickSnapshot(_ snaps: [String], label: (String) -> String, title: String) -> String? {
-        var map: [String: String] = [:]
-        let labels = snaps.map { z -> String in let l = label(z); map[l] = z; return l }
-        let listLit = "{" + labels.map { "\"" + $0.replacingOccurrences(of: "\"", with: "\\\"") + "\"" }.joined(separator: ", ") + "}"
-        let pick = "choose from list \(listLit) with title \"\(title)\" with prompt \"\(L.t("還原哪一份？", "Which snapshot?"))\" OK button name \"\(L.t("下一步", "Next"))\" cancel button name \"\(L.t("取消", "Cancel"))\""
-        let chosen = String(data: engine.sh("/usr/bin/osascript", ["-e", pick]).1, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? "false"
-        if chosen.isEmpty || chosen == "false" { return nil }
-        return map[chosen]
+    // shared snapshot chooser — native window (icon + label rows). bg-safe (runs on main).
+    func pickSnapshot(_ snaps: [String], label: (String) -> String, title: String, app: String?) -> String? {
+        let icon = Icons.app(app)
+        let rows = snaps.map { PickerRow(id: $0, title: label($0), subtitle: "", icon: icon) }
+        var chosen: String?
+        DispatchQueue.main.sync {
+            chosen = PickerWindow.chooseOne(title: title, prompt: L.t("還原哪一份？", "Which snapshot?"), items: rows, ok: L.t("下一步", "Next"))
+        }
+        return chosen
     }
     func info(_ msg: String) {
         _ = engine.sh("/usr/bin/osascript", ["-e", "display dialog \"\(msg)\" buttons {\"\(L.t("好","OK"))\"} default button \"\(L.t("好","OK"))\" with title \"Configgy\""])
@@ -486,18 +439,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let g = GenericBackup(home: engine.home, def: d)
         let snaps = Array(g.listSnapshots().reversed())
         if snaps.isEmpty { info(L.t("「\(d.name)」還沒有備份。", "No backup for \"\(d.name)\" yet.")); return .neutral }
-        guard let zip = pickSnapshot(snaps, label: { g.label($0) }, title: "Configgy · \(d.name)") else { return .neutral }
+        guard let zip = pickSnapshot(snaps, label: { g.label($0) }, title: "Configgy · \(d.name)", app: d.app) else { return .neutral }
         if !confirmChanges(g.previewRestore(zip), title: "Configgy · \(d.name)", what: d.name) { return .neutral }
         return outcome(g.restore(zip))
     }
     @objc func removeTargetMenu() {
         let defs = TargetStore.load(engine.home)
         if defs.isEmpty { return }
-        let picks = defs.map { (uuid: $0.id, label: $0.name) }
-        guard let sel = CheckboxPicker.run(picks,
+        let picks = defs.map { PickerRow(id: $0.id, title: $0.name, subtitle: $0.paths.joined(separator: ", "), icon: Icons.app($0.app)) }
+        guard let sel = PickerWindow.chooseMany(
                 title: L.t("移除自訂目標", "Remove Targets"),
                 prompt: L.t("勾選要從清單移除的目標（雲端既有備份不會刪）：", "Select targets to remove (existing backups are kept):"),
-                ok: L.t("移除", "Remove")), !sel.isEmpty else { return }
+                items: picks, ok: L.t("移除", "Remove")), !sel.isEmpty else { return }
         for id in sel { TargetStore.remove(id, home: engine.home) }
         buildMenu()
     }
@@ -530,16 +483,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     @objc func discoverTargets() {           // scanning/adding needs no FDA; only the backup itself does
         let items = TargetStore.discover(engine.home)
         if items.isEmpty { info(L.t("沒找到可備份的常見設定。", "No common configs found to back up.")); return }
-        let picks = items.map { (uuid: $0.id, label: $0.note.isEmpty ? $0.name : "\($0.name) · \($0.note)") }
         // each picked config becomes its own independent backup target (separate zips) — not a Zen workspace
-        guard let sel = CheckboxPicker.run(picks,
-                title: L.t("掃描建議的設定", "Discovered configs"),
+        let picks = items.map { PickerRow(id: $0.id, title: $0.name, subtitle: $0.note, icon: Icons.app($0.app)) }
+        guard let sel = PickerWindow.chooseMany(
+                title: L.t("掃描建議的設定", "Discovered Configs"),
                 prompt: L.t("勾選要加入的設定（各自獨立成備份目標）：", "Select configs to add (each becomes its own target):"),
-                ok: L.t("加入", "Add")), !sel.isEmpty else { return }
+                items: picks, ok: L.t("加入", "Add")), !sel.isEmpty else { return }
         var defs = TargetStore.load(engine.home)
         for it in items where sel.contains(it.id) {
             defs.removeAll { $0.id == it.id }
-            defs.append(TargetDef(id: it.id, name: it.name, paths: it.paths, excludes: it.excludes))
+            defs.append(TargetDef(id: it.id, name: it.name, paths: it.paths, excludes: it.excludes, app: it.app))
         }
         TargetStore.save(defs, home: engine.home)
         buildMenu()

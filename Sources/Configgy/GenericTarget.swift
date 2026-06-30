@@ -9,6 +9,7 @@ struct TargetDef: Codable, Equatable {
     var name: String        // display name
     var paths: [String]     // may contain a leading ~
     var excludes: [String] = []
+    var app: String? = nil  // bundle id, for the menu/picker icon
 }
 struct TargetMeta: Codable { let host: String; let ts: String; let iso: String; let hash: String; let files: Int }
 
