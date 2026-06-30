@@ -23,6 +23,7 @@ extension AppDelegate {
         let win = NSWindow(contentRect: NSRect(x: 0, y: 0, width: w, height: h),
                            styleMask: [.titled, .closable, .miniaturizable, .resizable], backing: .buffered, defer: false)
         win.title = "Configgy"; win.titlebarAppearsTransparent = true
+        win.isReleasedWhenClosed = false          // we manage its lifetime; closing must not free it underneath an event
         win.minSize = NSSize(width: UI.s(640), height: UI.s(420))
         let bg = NSVisualEffectView(frame: NSRect(x: 0, y: 0, width: w, height: h))
         bg.material = .underWindowBackground; bg.blendingMode = .behindWindow; bg.state = .active
@@ -208,9 +209,14 @@ extension AppDelegate {
     }
     @objc func settingsToggleZoom(_ s: NSSwitch) {
         var st = Settings.load(engine.home); st.uiZoom = (s.state == .on); Settings.save(st, home: engine.home)
-        UI.scale = UI.compute()
-        mainWin?.close(); mainWin = nil; toolbarHost = nil; contentHost = nil; tabsView = nil   // rebuild at new scale
-        showMain()                               // reopen on the Settings page (mainSettings stays true)
+        // rebuild on the next runloop (let this click finish) with no close animation, no premature release
+        DispatchQueue.main.async { [weak self] in
+            guard let self else { return }
+            UI.scale = UI.compute()
+            self.mainWin?.orderOut(nil)
+            self.mainWin = nil; self.toolbarHost = nil; self.contentHost = nil; self.tabsView = nil
+            self.showMain()                      // stays on the Settings page (mainSettings remains true)
+        }
     }
     @objc func settingsTogglePause(_ s: NSSwitch) { paused = (s.state == .on); buildMenu() }
     @objc func settingsToggleLogin(_ s: NSSwitch) {
