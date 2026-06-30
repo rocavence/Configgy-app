@@ -32,7 +32,8 @@ final class FlippedView: NSView { override var isFlipped: Bool { true } }
 final class PickerWindow: NSObject {
     private var win: NSWindow!
     private var multi = false
-    private var checks: [String: NSButton] = [:]
+    private var checked: [String: Bool] = [:]            // multi-select state (image-based, no NSButton)
+    private var checkViews: [String: NSImageView] = [:]
     private var rowViews: [String: NSView] = [:]
     private var selectedId: String?
     private var selectAllBtn: NSButton?
@@ -101,7 +102,7 @@ final class PickerWindow: NSObject {
         let code = NSApp.runModal(for: win)
         win.orderOut(nil)
         guard code == .OK else { return nil }
-        if multi { return checks.filter { $0.value.state == .on }.map { $0.key } }
+        if multi { return checked.filter { $0.value }.map { $0.key } }
         return selectedId.map { [$0] }
     }
 
@@ -129,21 +130,27 @@ final class PickerWindow: NSObject {
             row.addSubview(sub)
         }
         if multi {
-            let cb = NSButton(checkboxWithTitle: "", target: nil, action: nil)
-            cb.state = .off                       // don't pre-select for the user; use 全選 to select all
-            cb.frame = NSRect(x: width - 12 - 34, y: (rowH - 6 - 20) / 2, width: 24, height: 20)
-            row.addSubview(cb); checks[it.id] = cb
+            let civ = NSImageView(frame: NSRect(x: width - 12 - 30, y: (rowH - 6 - 22) / 2, width: 22, height: 22))
+            civ.imageScaling = .scaleProportionallyUpOrDown
+            row.addSubview(civ); checkViews[it.id] = civ; checked[it.id] = false
+            updateCheck(it.id, false)             // start unchecked; whole row toggles it
         }
         let g = NSClickGestureRecognizer(target: self, action: #selector(rowTapped(_:)))
         row.addGestureRecognizer(g)
         return row
     }
+    private func updateCheck(_ id: String, _ on: Bool) {
+        let iv = checkViews[id]
+        iv?.image = NSImage(systemSymbolName: on ? "checkmark.circle.fill" : "circle", accessibilityDescription: nil)
+        iv?.contentTintColor = on ? .controlAccentColor : .tertiaryLabelColor
+    }
 
     @objc private func rowTapped(_ g: NSClickGestureRecognizer) {
         guard let row = g.view, let id = row.identifier?.rawValue else { return }
         if multi {
-            if g.location(in: row).x >= row.bounds.width - 38 { return }   // direct checkbox click toggles itself
-            if let cb = checks[id] { cb.state = (cb.state == .on) ? .off : .on }
+            let on = !(checked[id] ?? false)
+            checked[id] = on
+            updateCheck(id, on)
         } else {
             if let prev = selectedId, let pv = rowViews[prev] { pv.layer?.backgroundColor = nil }
             selectedId = id
@@ -151,8 +158,8 @@ final class PickerWindow: NSObject {
         }
     }
     @objc private func selectAllTapped() {
-        let turnOn = checks.values.contains { $0.state == .off }   // any unchecked → select all; else clear all
-        checks.values.forEach { $0.state = turnOn ? .on : .off }
+        let turnOn = checked.values.contains { !$0 }   // any unchecked → select all; else clear all
+        for id in checked.keys { checked[id] = turnOn; updateCheck(id, turnOn) }
         selectAllBtn?.title = turnOn ? L.t("全不選", "Deselect All") : L.t("全選", "Select All")
     }
     @objc private func okTapped() { NSApp.stopModal(withCode: .OK) }
