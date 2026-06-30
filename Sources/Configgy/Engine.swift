@@ -15,7 +15,7 @@ enum BackupResult { case done(String), skipped, failed }
 enum RestoreResult { case done(String), cancelled, failed }
 enum RestoreScope { case full, workspace }   // workspace = workspaces + tabs only
 
-// All of Zennly's backup/restore logic. Pure Swift + a few shell-outs to
+// All of Configgy's backup/restore logic. Pure Swift + a few shell-outs to
 // cp/zip/unzip/pgrep/osascript/open — same approach the menubar app and the CLI share.
 final class Engine {
     let home: String
@@ -26,7 +26,7 @@ final class Engine {
     let stateFile: String
     let host: String
     let keep = 10
-    let isTest = ProcessInfo.processInfo.environment["ZENNLY_TEST"] != nil
+    let isTest = ProcessInfo.processInfo.environment["CONFIGGY_TEST"] != nil
 
     // config tier — copied only if present (mirrors zen-settings-backup)
     let files = ["prefs.js", "user.js", "zen-themes.json", "zen-keyboard-shortcuts.json",
@@ -40,14 +40,32 @@ final class Engine {
 
     let fm = FileManager.default
 
+    static let embeddedRestoreSh = """
+        #!/bin/sh
+        set -e
+        HERE="$(cd "$(dirname "$0")" && pwd)"; SRC="$HERE/profile"
+        [ -d "$SRC" ] || { echo "no profile/ next to restore.sh"; exit 1; }
+        ROOT="$HOME/Library/Application Support/zen"
+        P="$ROOT/$(grep -m1 '^Default=' "$ROOT/installs.ini" | cut -d= -f2)"
+        [ -d "$P" ] || { echo "target profile not found"; exit 1; }
+        if pgrep -f "Zen.app/Contents/MacOS/zen" >/dev/null 2>&1; then echo "quit Zen first"; exit 1; fi
+        BK="$P/pre-restore-backup-$(date +%Y%m%d-%H%M%S)"; mkdir -p "$BK"
+        ( cd "$SRC" && find . -mindepth 1 -maxdepth 1 ) | while read -r i; do
+          n=$(basename "$i")
+          [ -e "$P/$n" ] && { cp -Rp "$P/$n" "$BK/"; rm -rf "$P/$n"; }
+          cp -Rp "$SRC/$n" "$P/"
+        done
+        echo "restored into $P (previous files in $BK)"
+        """
+
     init() throws {
         home = ProcessInfo.processInfo.environment["HOME"] ?? NSHomeDirectory()
         zenRoot = home + "/Library/Application Support/zen"
-        stateDir = home + "/Library/Application Support/zennly"
+        stateDir = home + "/Library/Application Support/Configgy"
         stateFile = stateDir + "/state.json"
         host = Engine.detectHost()
         profileDir = try Engine.detectProfile(zenRoot: zenRoot)
-        dropboxDir = Engine.detectDropbox(home: home)
+        dropboxDir = Engine.dropboxBase(home: home) + "/zen"
     }
 
     // ---------- detection ----------
@@ -76,13 +94,32 @@ final class Engine {
                 }
             }
         }
-        throw NSError(domain: "Zennly", code: 1, userInfo: [NSLocalizedDescriptionKey: "找不到 Zen profile（installs.ini）"])
+        throw NSError(domain: "Configgy", code: 1, userInfo: [NSLocalizedDescriptionKey: "找不到 Zen profile（installs.ini）"])
     }
-    static func detectDropbox(home: String) -> String {
+    static func dropboxBase(home: String) -> String {
+        for base in [home + "/Dropbox", home + "/Library/CloudStorage/Dropbox"] {
+            if FileManager.default.fileExists(atPath: base) { return base + "/Apps/Configgy" }
+        }
+        return home + "/Library/CloudStorage/Dropbox/Apps/Configgy"
+    }
+    static func legacyZenDir(home: String) -> String {
         for base in [home + "/Dropbox", home + "/Library/CloudStorage/Dropbox"] {
             if FileManager.default.fileExists(atPath: base) { return base + "/Apps/zennly" }
         }
         return home + "/Library/CloudStorage/Dropbox/Apps/zennly"
+    }
+    // one-time: copy legacy Apps/zennly zips into the new Apps/Configgy/zen.
+    func migrateLegacy() {
+        let legacy = Engine.legacyZenDir(home: home)
+        guard fm.fileExists(atPath: legacy), legacy != dropboxDir else { return }
+        let old = (try? fm.contentsOfDirectory(atPath: legacy))?.filter { $0.hasPrefix("zennly-") && $0.hasSuffix(".zip") } ?? []
+        guard !old.isEmpty else { return }
+        try? fm.createDirectory(atPath: dropboxDir, withIntermediateDirectories: true)
+        var n = 0
+        for f in old where !fm.fileExists(atPath: dropboxDir + "/" + f) {
+            do { try fm.copyItem(atPath: legacy + "/" + f, toPath: dropboxDir + "/" + f); n += 1 } catch {}
+        }
+        if n > 0 { log("已從舊位置 Apps/zennly 帶入 \(n) 份備份。") }
     }
 
     // ---------- shell ----------
@@ -169,7 +206,7 @@ final class Engine {
     }
     func listZips() -> [String] {
         guard let all = try? fm.contentsOfDirectory(atPath: dropboxDir) else { return [] }
-        return all.filter { $0.hasPrefix("zennly-") && $0.hasSuffix(".zip") }
+        return all.filter { ($0.hasPrefix("configgy-zen-") || $0.hasPrefix("zennly-")) && $0.hasSuffix(".zip") }
             .sorted { tsKey($0) < tsKey($1) }
     }
     func newestZip() -> String? { listZips().last }
@@ -185,7 +222,7 @@ final class Engine {
     func manualBackup() -> BackupResult {
         var weClosed = false
         if zenRunning() {
-            let dialog = "display dialog \"Zen 還開著。備份需要 Zen 完全關閉（設定檔關閉時才寫定）。要關閉 Zen 並備份嗎？（備份完會自動重開）\" buttons {\"取消\", \"關閉並備份\"} default button \"關閉並備份\" with title \"Zennly\" with icon note"
+            let dialog = "display dialog \"Zen 還開著。備份需要 Zen 完全關閉（設定檔關閉時才寫定）。要關閉 Zen 並備份嗎？（備份完會自動重開）\" buttons {\"取消\", \"關閉並備份\"} default button \"關閉並備份\" with title \"Configgy\" with icon note"
             if sh("/usr/bin/osascript", ["-e", dialog]).0 != 0 { return .skipped }   // cancelled
             sh("/usr/bin/osascript", ["-e", "tell application \"Zen\" to quit"])
             for _ in 0..<40 where zenRunning() { Thread.sleep(forTimeInterval: 0.5) }
@@ -205,8 +242,8 @@ final class Engine {
 
         try? fm.createDirectory(atPath: dropboxDir, withIntermediateDirectories: true)
         let ts = stamp()
-        let name = "zennly-\(host)-\(ts).zip"
-        let tmp = (NSTemporaryDirectory() as NSString).appendingPathComponent("zennly-\(UUID().uuidString)")
+        let name = "configgy-zen-\(host)-\(ts).zip"
+        let tmp = (NSTemporaryDirectory() as NSString).appendingPathComponent("configgy-\(UUID().uuidString)")
         let stageProfile = tmp + "/snapshot/profile"
         try? fm.createDirectory(atPath: stageProfile, withIntermediateDirectories: true)
         for f in files { let s = profileDir + "/" + f; if fm.fileExists(atPath: s) { sh("/bin/cp", ["-p", s, stageProfile + "/" + f]) } }
@@ -218,6 +255,10 @@ final class Engine {
         let iso = ISO8601DateFormatter().string(from: Date())
         let meta = Meta(host: host, ts: ts, iso: iso, profileHash: hash, summary: summary)
         if let md = try? JSONEncoder().encode(meta) { try? md.write(to: URL(fileURLWithPath: tmp + "/snapshot/meta.json")) }
+        // self-restoring script for a bare machine without Configgy (supersedes zen-settings-backup)
+        let rs = tmp + "/snapshot/restore.sh"
+        try? Engine.embeddedRestoreSh.write(toFile: rs, atomically: true, encoding: .utf8)
+        try? fm.setAttributes([.posixPermissions: 0o755], ofItemAtPath: rs)
 
         let out = dropboxDir + "/" + name
         let (code, _) = sh("/usr/bin/zip", ["-rqy", out, "snapshot"], cwd: tmp)
@@ -386,7 +427,7 @@ final class Engine {
         var map: [String: String] = [:]
         let labels = zips.map { z -> String in let l = label(z); map[l] = z; return l }
         let listLit = "{" + labels.map { "\"" + $0.replacingOccurrences(of: "\"", with: "\\\"") + "\"" }.joined(separator: ", ") + "}"
-        let script = "choose from list \(listLit) with title \"Zennly\" with prompt \"雲端有較新的 Zen 備份，要還原哪一份？（會關閉並重開 Zen）\" OK button name \"還原\" cancel button name \"略過\""
+        let script = "choose from list \(listLit) with title \"Configgy\" with prompt \"雲端有較新的 Zen 備份，要還原哪一份？（會關閉並重開 Zen）\" OK button name \"還原\" cancel button name \"略過\""
         let (_, d) = sh("/usr/bin/osascript", ["-e", script])
         let chosen = String(data: d, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? "false"
         if chosen.isEmpty || chosen == "false" {
@@ -396,7 +437,7 @@ final class Engine {
         guard let zip = map[chosen] else { return .cancelled }
 
         // second step: full restore, or pick specific workspace(s) to merge in.
-        let scopeDialog = "display dialog \"要怎麼套用這份備份？\\n\\n• 完整還原：整個 Zen 設定都換成這份\\n• 選擇工作區：只把你挑的工作區（＋分頁/容器）併進目前的 Zen，其餘不動\" buttons {\"取消\", \"選擇工作區\", \"完整還原\"} cancel button \"取消\" default button \"完整還原\" with title \"Zennly · 還原\""
+        let scopeDialog = "display dialog \"要怎麼套用這份備份？\\n\\n• 完整還原：整個 Zen 設定都換成這份\\n• 選擇工作區：只把你挑的工作區（＋分頁/容器）併進目前的 Zen，其餘不動\" buttons {\"取消\", \"選擇工作區\", \"完整還原\"} cancel button \"取消\" default button \"完整還原\" with title \"Configgy · 還原\""
         let (code, sd) = sh("/usr/bin/osascript", ["-e", scopeDialog])
         func dismiss() { if autoDismiss { var st = readState(); st.dismissedZip = newestZip(); writeState(st) } }
         if code != 0 { dismiss(); return .cancelled }                       // 取消
@@ -409,7 +450,7 @@ final class Engine {
         var wmap: [String: String] = [:]
         let wlabels = wss.map { w -> String in wmap[w.label] = w.uuid; return w.label }
         let wListLit = "{" + wlabels.map { "\"" + $0.replacingOccurrences(of: "\"", with: "\\\"") + "\"" }.joined(separator: ", ") + "}"
-        let wscript = "choose from list \(wListLit) with title \"Zennly · 選擇工作區\" with prompt \"要還原哪些工作區？（可多選；會併進目前的 Zen）\" with multiple selections allowed OK button name \"還原\" cancel button name \"取消\""
+        let wscript = "choose from list \(wListLit) with title \"Configgy · 選擇工作區\" with prompt \"要還原哪些工作區？（可多選；會併進目前的 Zen）\" with multiple selections allowed OK button name \"還原\" cancel button name \"取消\""
         let (_, wd) = sh("/usr/bin/osascript", ["-e", wscript])
         let picked = String(data: wd, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? "false"
         if picked.isEmpty || picked == "false" { dismiss(); return .cancelled }
@@ -418,5 +459,5 @@ final class Engine {
         return restoreWorkspaces(zip, uuids: uuids)
     }
 
-    func log(_ m: String) { FileHandle.standardError.write(Data("[zennly] \(m)\n".utf8)) }
+    func log(_ m: String) { FileHandle.standardError.write(Data("[configgy] \(m)\n".utf8)) }
 }

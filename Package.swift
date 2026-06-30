@@ -2,10 +2,10 @@
 import PackageDescription
 
 let package = Package(
-    name: "Zennly",
+    name: "Configgy",
     platforms: [.macOS(.v14)],
     targets: [
-        .executableTarget(name: "Zennly", path: "Sources/Zennly"),
+        .executableTarget(name: "Configgy", path: "Sources/Configgy"),
     ],
     swiftLanguageModes: [.v5]
 )

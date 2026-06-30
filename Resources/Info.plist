@@ -5,17 +5,17 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>zh-Hant</string>
 	<key>CFBundleDisplayName</key>
-	<string>Zennly</string>
+	<string>Configgy</string>
 	<key>CFBundleExecutable</key>
-	<string>Zennly</string>
+	<string>Configgy</string>
 	<key>CFBundleIconFile</key>
 	<string>AppIcon</string>
 	<key>CFBundleIdentifier</key>
-	<string>com.rocavence.zennly</string>
+	<string>com.rocavence.configgy</string>
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>CFBundleName</key>
-	<string>Zennly</string>
+	<string>Configgy</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
@@ -27,6 +27,6 @@
 	<key>LSUIElement</key>
 	<true/>
 	<key>NSAppleEventsUsageDescription</key>
-	<string>Zennly 需要控制 Zen 瀏覽器（在還原備份時關閉並重新開啟它）。</string>
+	<string>Configgy 需要控制 Zen 瀏覽器(還原 Zen 備份時)（在還原備份時關閉並重新開啟它）。</string>
 </dict>
 </plist>

@@ -1,9 +1,15 @@
 import AppKit
 
 // ===================== CLI mode =====================
-// `Zennly backup|list|status|restore [zip]` runs headless and exits.
+// `Configgy backup|list|status|restore [zip]` runs headless and exits.
 let args = CommandLine.arguments
 if args.count > 1 {
+    let cliHome = ProcessInfo.processInfo.environment["HOME"] ?? NSHomeDirectory()
+    switch args[1] {                                   // Claude target needs no Zen profile
+    case "claude-backup": ClaudeBackup(home: cliHome).backup(); exit(0)
+    case "claude-restore": ClaudeBackup(home: cliHome).restore(); exit(0)
+    default: break
+    }
     do {
         let e = try Engine()
         switch args[1] {
@@ -22,7 +28,7 @@ if args.count > 1 {
             e.log("雲端最新備份     : \(e.newestZip() ?? "(無)")")
         case "workspaces":
             if args.count > 2 { for w in e.workspacesIn(args[2]) { print("\(w.uuid)\t\(w.label)") } }
-            else { print("Usage: Zennly workspaces <zip>") }
+            else { print("Usage: Configgy workspaces <zip>") }
         case "restore":
             if args.count >= 5, args[3] == "ws" {
                 e.restoreWorkspaces(args[2], uuids: Set(args[4...]))
@@ -30,10 +36,10 @@ if args.count > 1 {
                 e.restore(args[2])
             } else { e.promptRestore() }
         default:
-            print("Usage: Zennly [backup|list|status|restore [zip]]")
+            print("Usage: Configgy [backup|list|status|restore [zip]]")
         }
     } catch {
-        FileHandle.standardError.write(Data("[zennly] \(error.localizedDescription)\n".utf8))
+        FileHandle.standardError.write(Data("[configgy] \(error.localizedDescription)\n".utf8))
         exit(1)
     }
     exit(0)
@@ -55,7 +61,7 @@ enum WorkspacePicker {
         let h = listH + 112
         let panel = NSPanel(contentRect: NSRect(x: 0, y: 0, width: width, height: h),
                             styleMask: [.titled], backing: .buffered, defer: false)
-        panel.title = "Zennly"
+        panel.title = "Configgy"
         guard let content = panel.contentView else { return nil }
 
         let head = NSTextField(labelWithString: "勾選要併進目前 Zen 的工作區：")
@@ -94,21 +100,24 @@ enum WorkspacePicker {
 final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     var statusItem: NSStatusItem!
     var engine: Engine!
-    let q = DispatchQueue(label: "com.rocavence.zennly.engine")
+    var claude: ClaudeBackup!
+    let q = DispatchQueue(label: "com.rocavence.configgy.engine")
     var timer: Timer?
     var wasRunning = false
     var busy = false
     var paused = false
     var idleRevert: DispatchWorkItem?
-    let header = NSMenuItem(title: "Zennly", action: nil, keyEquivalent: "")
-    let pauseItem = NSMenuItem(title: "暫停自動備份/還原", action: #selector(togglePause), keyEquivalent: "")
+    let header = NSMenuItem(title: "Configgy", action: nil, keyEquivalent: "")
+    let pauseItem = NSMenuItem(title: "暫停 Zen 自動備份/還原", action: #selector(togglePause), keyEquivalent: "")
 
     func applicationDidFinishLaunching(_ note: Notification) {
         do { engine = try Engine() }
         catch {
-            let a = NSAlert(); a.messageText = "Zennly 無法啟動"; a.informativeText = error.localizedDescription
+            let a = NSAlert(); a.messageText = "Configgy 無法啟動"; a.informativeText = error.localizedDescription
             a.runModal(); NSApp.terminate(nil); return
         }
+        claude = ClaudeBackup(home: engine.home)
+        engine.migrateLegacy()                          // one-time: old Apps/zennly → Apps/Configgy/zen
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         statusItem.button?.wantsLayer = true
         setIcon(.idle)
@@ -123,13 +132,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         header.isEnabled = false
         m.addItem(header)
         m.addItem(.separator())
-        m.addItem(withTitle: "立即備份", action: #selector(doBackup), keyEquivalent: "b").target = self
-        m.addItem(withTitle: "還原備份…", action: #selector(doRestore), keyEquivalent: "r").target = self
+        m.addItem(withTitle: "備份 Zen（立即）", action: #selector(doBackup), keyEquivalent: "b").target = self
+        m.addItem(withTitle: "還原 Zen…（可選工作區）", action: #selector(doRestore), keyEquivalent: "r").target = self
+        m.addItem(.separator())
+        m.addItem(withTitle: "備份 Claude 設定", action: #selector(doClaudeBackup), keyEquivalent: "").target = self
+        m.addItem(withTitle: "還原 Claude 設定", action: #selector(doClaudeRestore), keyEquivalent: "").target = self
         m.addItem(.separator())
         m.addItem(pauseItem)
-        m.addItem(withTitle: "開啟 Dropbox 備份資料夾", action: #selector(openDropbox), keyEquivalent: "").target = self
+        m.addItem(withTitle: "開啟備份資料夾", action: #selector(openDropbox), keyEquivalent: "").target = self
         m.addItem(.separator())
-        m.addItem(withTitle: "結束 Zennly", action: #selector(quit), keyEquivalent: "q").target = self
+        m.addItem(withTitle: "結束 Configgy", action: #selector(quit), keyEquivalent: "q").target = self
         statusItem.menu = m
     }
 
@@ -146,7 +158,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     // ---- menubar icon state + animation ----
     func symbolImage(_ name: String, color: NSColor? = nil) -> NSImage? {
-        guard let base = NSImage(systemSymbolName: name, accessibilityDescription: "Zennly") else { return nil }
+        guard let base = NSImage(systemSymbolName: name, accessibilityDescription: "Configgy") else { return nil }
         if let color {
             let img = base.withSymbolConfiguration(NSImage.SymbolConfiguration(paletteColors: [color]))
             img?.isTemplate = false
@@ -215,12 +227,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         var map: [String: String] = [:]
         let labels = zips.map { z -> String in let l = engine.label(z); map[l] = z; return l }
         let listLit = "{" + labels.map { "\"" + $0.replacingOccurrences(of: "\"", with: "\\\"") + "\"" }.joined(separator: ", ") + "}"
-        let pick = "choose from list \(listLit) with title \"Zennly\" with prompt \"要還原哪一份備份？\" OK button name \"下一步\" cancel button name \"取消\""
+        let pick = "choose from list \(listLit) with title \"Configgy\" with prompt \"要還原哪一份備份？\" OK button name \"下一步\" cancel button name \"取消\""
         let chosen = String(data: engine.sh("/usr/bin/osascript", ["-e", pick]).1, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? "false"
         if chosen.isEmpty || chosen == "false" { dismiss(); return .neutral }
         guard let zip = map[chosen] else { return .neutral }
 
-        let scopeDialog = "display dialog \"要怎麼套用這份備份？\\n\\n• 完整還原：整個 Zen 設定都換成這份\\n• 選擇工作區：勾選要併進目前 Zen 的工作區\" buttons {\"取消\", \"選擇工作區\", \"完整還原\"} cancel button \"取消\" default button \"完整還原\" with title \"Zennly · 還原\""
+        let scopeDialog = "display dialog \"要怎麼套用這份備份？\\n\\n• 完整還原：整個 Zen 設定都換成這份\\n• 選擇工作區：勾選要併進目前 Zen 的工作區\" buttons {\"取消\", \"選擇工作區\", \"完整還原\"} cancel button \"取消\" default button \"完整還原\" with title \"Configgy · 還原\""
         let (code, sd) = engine.sh("/usr/bin/osascript", ["-e", scopeDialog])
         if code != 0 { dismiss(); return .neutral }
         if !(String(data: sd, encoding: .utf8) ?? "").contains("選擇工作區") {
@@ -254,9 +266,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     // ---- actions ----
     @objc func doBackup() { runOp { self.outcome(self.engine.manualBackup()) } }
     @objc func doRestore() { runOp { self.interactiveRestore(autoDismiss: false) } }
+    @objc func doClaudeBackup() { runOp { self.outcome(self.claude.backup()) } }
+    @objc func doClaudeRestore() { runOp { self.outcome(self.claude.restore()) } }
     @objc func openDropbox() {
-        try? FileManager.default.createDirectory(atPath: engine.dropboxDir, withIntermediateDirectories: true)
-        NSWorkspace.shared.open(URL(fileURLWithPath: engine.dropboxDir))
+        let base = (engine.dropboxDir as NSString).deletingLastPathComponent   // Apps/Configgy
+        try? FileManager.default.createDirectory(atPath: base, withIntermediateDirectories: true)
+        NSWorkspace.shared.open(URL(fileURLWithPath: base))
     }
     @objc func togglePause() { paused.toggle(); refreshHeader() }
     @objc func quit() { NSApp.terminate(nil) }

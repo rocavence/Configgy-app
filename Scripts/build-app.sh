@@ -4,7 +4,7 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-APP_NAME="Zennly"
+APP_NAME="Configgy"
 APP_DIR="build/${APP_NAME}.app"
 CONTENTS="${APP_DIR}/Contents"
 MACOS_DIR="${CONTENTS}/MacOS"
@@ -23,7 +23,13 @@ printf 'APPL????' > "${CONTENTS}/PkgInfo"
 
 # Stable self-signed identity keeps the Full Disk Access grant across rebuilds
 # (ad-hoc signatures change every build → TCC silently drops the grant).
-SIGN_IDENTITY="Zennly Self-Signed"
+# Prefer a Configgy cert; fall back to the existing Findly self-signed key so
+# you don't have to make a new cert just for the rename (a self-signed cert is
+# just a signing key — reusing it keeps the FDA grant stable across rebuilds).
+SIGN_IDENTITY="Configgy Self-Signed"
+for cand in "Configgy Self-Signed" "Findly Self-Signed"; do
+  if security find-identity -p codesigning 2>/dev/null | grep -q "${cand}"; then SIGN_IDENTITY="${cand}"; break; fi
+done
 if security find-identity -p codesigning 2>/dev/null | grep -q "${SIGN_IDENTITY}"; then
   echo "→ codesign with ${SIGN_IDENTITY}"
   codesign --force --deep --sign "${SIGN_IDENTITY}" --timestamp=none "${APP_DIR}"
