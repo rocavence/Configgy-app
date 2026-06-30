@@ -28,19 +28,19 @@ extension AppDelegate {
         bg.autoresizingMask = [.width, .height]; win.contentView = bg
 
         let title = NSTextField(labelWithString: "Configgy")
-        title.font = UI.font(18, .bold); title.frame = NSRect(x: UI.s(24), y: h - UI.s(50), width: UI.s(300), height: UI.s(26))
+        title.font = UI.font(17, .bold); title.frame = NSRect(x: UI.s(20), y: h - UI.s(40), width: UI.s(260), height: UI.s(22))
         title.autoresizingMask = [.minYMargin]; bg.addSubview(title)
         let sub = NSTextField(labelWithString: "")
-        sub.font = UI.font(11); sub.textColor = .secondaryLabelColor
-        sub.frame = NSRect(x: UI.s(24), y: h - UI.s(70), width: UI.s(400), height: UI.s(16)); sub.autoresizingMask = [.minYMargin]
+        sub.font = UI.font(11.5); sub.textColor = .secondaryLabelColor
+        sub.frame = NSRect(x: UI.s(20), y: h - UI.s(58), width: UI.s(400), height: UI.s(15)); sub.autoresizingMask = [.minYMargin]
         sub.identifier = NSUserInterfaceItemIdentifier("subtitle"); bg.addSubview(sub)
 
-        // toolbar icon+text buttons, right-aligned
-        var tx = w - UI.s(16)
+        // toolbar icon+text buttons, tight group, right-aligned, vertically centered with the title
+        var tx = w - UI.s(20)
         func tool(_ sym: String, _ titleText: String, _ sel: Selector) {
             let b = makeIconButton(sym, titleText, sel, tint: nil, id: nil)
             tx -= b.frame.width
-            b.setFrameOrigin(NSPoint(x: tx, y: h - UI.s(52)))
+            b.setFrameOrigin(NSPoint(x: tx, y: h - UI.s(46)))
             b.autoresizingMask = [.minXMargin, .minYMargin]; bg.addSubview(b)
             tx -= UI.s(8)
         }
@@ -48,24 +48,26 @@ extension AppDelegate {
         tool("arrow.clockwise", L.t("重新掃描", "Rescan"), #selector(refreshMainBtn))
         tool("folder.badge.plus", L.t("加入自訂備份", "Add Custom"), #selector(addFolderFromMain))
 
-        let scroll = NSScrollView(frame: NSRect(x: UI.s(14), y: UI.s(14), width: w - UI.s(28), height: h - UI.s(92)))
+        let scroll = NSScrollView(frame: NSRect(x: UI.s(16), y: UI.s(16), width: w - UI.s(32), height: h - UI.s(84)))
         scroll.hasVerticalScroller = true; scroll.drawsBackground = false; scroll.autoresizingMask = [.width, .height]
-        let doc = FlippedView(frame: NSRect(x: 0, y: 0, width: w - UI.s(28), height: 0)); doc.autoresizingMask = [.width]
+        let doc = FlippedView(frame: NSRect(x: 0, y: 0, width: w - UI.s(32), height: 0)); doc.autoresizingMask = [.width]
         scroll.documentView = doc; bg.addSubview(scroll)
         win.delegate = self
         mainWin = win; mainDoc = doc; mainStatus = sub
     }
 
-    // a refined icon+text button, sized to fit
+    // a compact, refined icon+text button, sized to fit
     private func makeIconButton(_ sym: String, _ titleText: String, _ sel: Selector, tint: NSColor?, id: String?) -> NSButton {
-        let b = NSButton(title: " " + titleText, target: self, action: sel)
-        b.bezelStyle = .rounded; b.imagePosition = .imageLeading; b.font = UI.font(12)
-        b.image = NSImage(systemSymbolName: sym, accessibilityDescription: titleText)?.withSymbolConfiguration(UI.symCfg(13))
+        let b = NSButton(title: titleText, target: self, action: sel)
+        b.bezelStyle = .rounded; b.controlSize = .small
+        b.imagePosition = .imageLeading; b.font = UI.font(11.5, .medium)
+        b.image = NSImage(systemSymbolName: sym, accessibilityDescription: titleText)?.withSymbolConfiguration(UI.symCfg(12))
+        b.imageHugsTitle = true
         b.toolTip = titleText
         if let tint { b.contentTintColor = tint }
         if let id { b.identifier = NSUserInterfaceItemIdentifier(id) }
         b.sizeToFit()
-        var f = b.frame; f.size.height = 30; f.size.width = f.width + UI.s(14); b.frame = f   // buttons fixed 30 high
+        var f = b.frame; f.size.height = UI.s(28); f.size.width = (f.width + UI.s(10)).rounded(); b.frame = f
         return b
     }
 
@@ -102,40 +104,39 @@ extension AppDelegate {
         let active = items.filter { !$0.suggestion }
         mainStatus?.stringValue = L.t("備份目標 \(active.count) 個", "\(active.count) backup target(s)")
         doc.subviews.forEach { $0.removeFromSuperview() }
-        let rowH = UI.s(72); let w = doc.bounds.width
-        var y = UI.s(6); var sawSuggestionHeader = false
+        let rowH = UI.s(60); let w = doc.bounds.width
+        var y = UI.s(4); var sawSuggestionHeader = false
         for it in items {
             if it.suggestion && !sawSuggestionHeader {
-                let hdr = NSTextField(labelWithString: L.t("建議加入", "Suggestions"))
-                hdr.font = UI.font(11, .semibold); hdr.textColor = .secondaryLabelColor
-                hdr.frame = NSRect(x: UI.s(18), y: y + UI.s(6), width: w - UI.s(36), height: UI.s(16)); doc.addSubview(hdr)
+                let hdr = NSTextField(labelWithString: L.t("建議加入", "SUGGESTIONS").uppercased())
+                hdr.font = UI.font(10.5, .semibold); hdr.textColor = .tertiaryLabelColor
+                hdr.frame = NSRect(x: UI.s(18), y: y + UI.s(8), width: w - UI.s(36), height: UI.s(14)); doc.addSubview(hdr)
                 y += UI.s(28); sawSuggestionHeader = true
             }
             doc.addSubview(makeMainRow(it, y: y, width: w, rowH: rowH))
-            y += rowH + UI.s(4)
+            y += rowH + UI.s(6)
         }
         doc.frame = NSRect(x: 0, y: 0, width: w, height: max(y + UI.s(6), 1))
     }
 
     private func makeMainRow(_ it: Entry, y: CGFloat, width: CGFloat, rowH: CGFloat) -> NSView {
-        let row = NSView(frame: NSRect(x: UI.s(10), y: y, width: width - UI.s(20), height: rowH))
-        row.wantsLayer = true; row.layer?.cornerRadius = UI.s(10)
-        row.layer?.backgroundColor = NSColor.gray.withAlphaComponent(0.10).cgColor
+        let row = NSView(frame: NSRect(x: UI.s(12), y: y, width: width - UI.s(24), height: rowH))
+        row.wantsLayer = true; row.layer?.cornerRadius = UI.s(9)
+        row.layer?.backgroundColor = NSColor.gray.withAlphaComponent(0.12).cgColor
         row.autoresizingMask = [.width]
-        let inner = width - UI.s(20)
-        let isz: CGFloat = 56                      // app icon fixed 56
-
-        let iv = NSImageView(frame: NSRect(x: UI.s(14), y: (rowH - isz) / 2, width: isz, height: isz))
+        let inner = width - UI.s(24)
+        let iconX = UI.s(16), isz = UI.s(44)
+        let iv = NSImageView(frame: NSRect(x: iconX, y: (rowH - isz) / 2, width: isz, height: isz))
         iv.image = it.icon; iv.imageScaling = .scaleProportionallyUpOrDown; row.addSubview(iv)
 
-        // action buttons, right-aligned (rightmost added first)
-        var x = inner - UI.s(12)
+        // action buttons — a tight right-aligned cluster (rightmost added first)
+        var x = inner - UI.s(14)
         func place(_ sym: String, _ t: String, _ sel: Selector, _ tint: NSColor?) {
             let b = makeIconButton(sym, t, sel, tint: tint, id: it.id)
             x -= b.frame.width
             b.setFrameOrigin(NSPoint(x: x, y: (rowH - b.frame.height) / 2))
             b.autoresizingMask = [.minXMargin]; row.addSubview(b)
-            x -= UI.s(8)
+            x -= UI.s(6)
         }
         if it.suggestion {
             place("plus.circle.fill", L.t("加入", "Add"), #selector(mainAdd(_:)), .controlAccentColor)
@@ -146,14 +147,15 @@ extension AppDelegate {
             else if it.id == "zen" { place("pause.circle", L.t("停用", "Disable"), #selector(mainRemove(_:)), nil) }
         }
 
-        let nameX = UI.s(64); let textW = max(x - nameX, UI.s(80))
+        let nameX = iconX + isz + UI.s(12)
+        let textW = max(x - UI.s(8) - nameX, UI.s(80))
         let name = NSTextField(labelWithString: it.name)
-        name.font = UI.font(13.5, .semibold); name.lineBreakMode = .byTruncatingTail
-        name.frame = NSRect(x: nameX, y: rowH / 2 + UI.s(1), width: textW, height: UI.s(18))
+        name.font = UI.font(13, .semibold); name.lineBreakMode = .byTruncatingTail
+        name.frame = NSRect(x: nameX, y: rowH / 2 + UI.s(2), width: textW, height: UI.s(17))
         name.autoresizingMask = [.width]; row.addSubview(name)
         let detail = NSTextField(labelWithString: it.detail)
         detail.font = UI.font(11); detail.textColor = .secondaryLabelColor; detail.lineBreakMode = .byTruncatingTail
-        detail.frame = NSRect(x: nameX, y: rowH / 2 - UI.s(18), width: textW, height: UI.s(15))
+        detail.frame = NSRect(x: nameX, y: rowH / 2 - UI.s(17), width: textW, height: UI.s(14))
         detail.autoresizingMask = [.width]; row.addSubview(detail)
         return row
     }
