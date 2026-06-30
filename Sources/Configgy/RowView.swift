@@ -21,7 +21,7 @@ final class RowView: NSView {
 
     init(entry: AppDelegate.Entry, y: CGFloat, width: CGFloat, rowH: CGFloat) {
         self.id = entry.id
-        super.init(frame: NSRect(x: UI.s(12), y: y, width: width - UI.s(24), height: rowH))
+        super.init(frame: NSRect(x: UI.s(14), y: y, width: width - UI.s(14) - UI.s(20), height: rowH))  // right gutter for the overlay scroller
         wantsLayer = true
         layer?.cornerRadius = radius
         layer?.masksToBounds = true                  // clip everything to the rounded rect (fixes corner glitch)
@@ -84,8 +84,8 @@ final class RowView: NSView {
     override func mouseEntered(with e: NSEvent) { highlight(true) }
     override func mouseExited(with e: NSEvent) { highlight(false) }
     private func highlight(_ on: Bool) {
-        layer?.borderWidth = on ? UI.s(1.5) : 0
-        layer?.borderColor = on ? NSColor.white.withAlphaComponent(0.55).cgColor : NSColor.clear.cgColor
+        layer?.borderWidth = on ? UI.s(1) : 0           // thin hairline highlight
+        layer?.borderColor = on ? NSColor.white.withAlphaComponent(0.45).cgColor : NSColor.clear.cgColor
         layer?.backgroundColor = NSColor.gray.withAlphaComponent(on ? 0.17 : 0.12).cgColor
     }
 
