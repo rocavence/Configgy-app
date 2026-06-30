@@ -26,6 +26,12 @@ if args.count > 1 {
     case "discover":
         for it in TargetStore.discover(cliHome) { print("\(it.id)\t\(it.name)\t\(it.paths.joined(separator: ", "))") }
         exit(0)
+    case "locations":
+        print("dropbox: \(BackupLoc.dropbox(cliHome) ?? "-")")
+        print("icloud:  \(BackupLoc.icloud(cliHome) ?? "-")")
+        print("gdrive:  \(BackupLoc.gdrive(cliHome) ?? "-")")
+        print("current: \(Engine.dropboxBase(home: cliHome))")
+        exit(0)
     case "target-add":
         if args.count >= 5 { TargetStore.add(TargetDef(id: args[2], name: args[3], paths: Array(args[4...])), home: cliHome); print("added \(args[2])") }
         else { print("Usage: Configgy target-add <id> <name> <path...>") }
@@ -160,7 +166,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             a.runModal(); NSApp.terminate(nil); return
         }
         L.lang = L.resolve(Settings.load(engine.home).language)
-        if !engine.isTest && !Engine.backupRootResolved(home: engine.home) { promptBackupFolder() }
+        if !engine.isTest && !Engine.backupRootResolved(home: engine.home) { chooseBackupLocation(initial: true) }
         claude = ClaudeBackup(home: engine.home)        // created after the folder prompt so it picks up the choice
         fdaOK = engine.isTest ? true : canAccessBackup()
         engine.migrateLegacy()                          // one-time: old Apps/zennly → Apps/Configgy/zen
@@ -186,22 +192,36 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         return ok
     }
 
-    // Dropbox not found → let the user pick a folder to store backups in.
-    func promptBackupFolder() {
-        let a = NSAlert()
-        a.messageText = L.t("找不到 Dropbox", "Dropbox not found")
-        a.informativeText = L.t("Configgy 預設備份到 Dropbox/Apps/Configgy，但這台找不到 Dropbox。請選一個資料夾存放備份。",
-                                "Configgy backs up to Dropbox/Apps/Configgy by default, but no Dropbox was found here. Choose a folder to store backups.")
-        a.addButton(withTitle: L.t("選擇資料夾…", "Choose Folder…"))
-        a.addButton(withTitle: L.t("稍後", "Later"))
-        NSApp.activate(ignoringOtherApps: true)
-        guard a.runModal() == .alertFirstButtonReturn else { return }
-        let panel = NSOpenPanel()
-        panel.canChooseFiles = false; panel.canChooseDirectories = true; panel.canCreateDirectories = true
-        panel.message = L.t("選擇備份存放資料夾", "Choose a folder to store backups")
-        panel.directoryURL = URL(fileURLWithPath: engine.home)
-        guard panel.runModal() == .OK, let url = panel.url else { return }
-        var s = Settings.load(engine.home); s.backupBase = url.path + "/Configgy"; Settings.save(s, home: engine.home)
+    func notFound(_ name: String) -> String? {
+        info(L.t("找不到 \(name)，請改用自訂路徑。", "\(name) not found — choose a custom folder instead.")); return nil
+    }
+    // let the user choose where backups live: Dropbox / iCloud / Google Drive / custom
+    func chooseBackupLocation(initial: Bool) {
+        let home = engine.home
+        let drop = BackupLoc.dropbox(home), icl = BackupLoc.icloud(home), gdr = BackupLoc.gdrive(home)
+        func tag(_ s: String?) -> String { s == nil ? L.t("（未偵測到）", " (not found)") : "" }
+        let custom = L.t("自訂路徑…", "Custom folder…")
+        let labels = ["Dropbox\(tag(drop))", "iCloud Drive\(tag(icl))", "Google Drive\(tag(gdr))", custom]
+        let listLit = "{" + labels.map { "\"\($0)\"" }.joined(separator: ", ") + "}"
+        let prompt = L.t("把備份存到哪裡？", "Where should backups be stored?")
+        let pick = "choose from list \(listLit) with title \"Configgy\" with prompt \"\(prompt)\" OK button name \"\(L.t("選擇", "Choose"))\" cancel button name \"\(L.t("取消", "Cancel"))\""
+        let chosen = String(data: engine.sh("/usr/bin/osascript", ["-e", pick]).1, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? "false"
+        if chosen.isEmpty || chosen == "false" { return }
+        var base: String?
+        if chosen.hasPrefix("Dropbox") { base = drop ?? notFound("Dropbox") }
+        else if chosen.hasPrefix("iCloud") { base = icl ?? notFound("iCloud Drive") }
+        else if chosen.hasPrefix("Google") { base = gdr ?? notFound("Google Drive") }
+        else {
+            let panel = NSOpenPanel()
+            panel.canChooseFiles = false; panel.canChooseDirectories = true; panel.canCreateDirectories = true
+            panel.message = L.t("選擇備份存放資料夾", "Choose a folder to store backups")
+            panel.directoryURL = URL(fileURLWithPath: home)
+            NSApp.activate(ignoringOtherApps: true)
+            if panel.runModal() == .OK, let u = panel.url { base = u.path + "/Configgy" }
+        }
+        guard let b = base else { return }
+        var s = Settings.load(home); s.backupBase = b; Settings.save(s, home: home)
+        if !initial { fdaOK = canAccessBackup(); buildMenu(); info(L.t("備份位置已設為：\n\(b)", "Backup location set to:\n\(b)")) }
     }
 
     @objc func openFDAGuide() { showWelcome(firstRun: false) }
@@ -274,6 +294,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         pauseItem.title = L.t("暫停 Zen 自動備份/還原", "Pause Zen Auto Backup/Restore")
         m.addItem(pauseItem)
         m.addItem(withTitle: L.t("開啟備份資料夾", "Open Backup Folder"), action: #selector(openDropbox), keyEquivalent: "").target = self
+        m.addItem(withTitle: L.t("備份位置…", "Backup Location…"), action: #selector(changeBackupLocation), keyEquivalent: "").target = self
         // launch at login (default off)
         let launch = m.addItem(withTitle: L.t("開機自動啟動", "Launch at Login"), action: #selector(toggleLaunchAtLogin), keyEquivalent: "")
         launch.target = self
@@ -546,6 +567,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         NSWorkspace.shared.open(URL(fileURLWithPath: base))
     }
     @objc func togglePause() { paused.toggle(); refreshHeader() }
+    @objc func changeBackupLocation() { chooseBackupLocation(initial: false) }
     @objc func about() { NSWorkspace.shared.open(URL(string: "https://github.com/rocavence/Configgy-app/releases")!) }
     @objc func setLanguage(_ sender: NSMenuItem) {
         let code = sender.representedObject as? String

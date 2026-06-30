@@ -82,8 +82,13 @@ backed up before being overwritten, so a restore is never a blind clobber.
    and highlights the app in Finder. Add `Configgy.app` to **System Settings →
    Privacy &amp; Security → Full Disk Access**, enable it, and choose *Quit &amp;
    Reopen*. Without it Configgy can't read or write the Dropbox folder.
+4. **Pick a backup location.** Backups default to Dropbox; if it's not found on
+   launch (or via **Backup Location…** in the menu anytime) you can choose
+   **Dropbox / iCloud Drive / Google Drive / a custom folder**.
 
 The app **is** the background watcher (polls every 2.5 s) — there's no LaunchAgent.
+Optional **Launch at Login** (off by default) and a **Language** switch
+(System / 中文 / English) are in the menu.
 
 ## Build from source
 
@@ -111,7 +116,7 @@ The same binary runs headless:
 Configgy backup [--force] | list | status
 Configgy restore [<zip> [ws <uuid…>]] | workspaces <zip> | preview <zip>
 Configgy claude-backup | claude-list | claude-restore [<zip>] | claude-preview <zip>
-Configgy discover | targets | target-add <id> <name> <path…>
+Configgy discover | targets | locations | target-add <id> <name> <path…>
 Configgy target-backup <id> | target-list <id> | target-restore <id> [<zip>] | target-preview <id> [<zip>]
 ```
 
