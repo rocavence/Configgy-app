@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="Resources/icon-1024.png" width="128" alt="Configgy icon">
+  <img src="Resources/icon-256.png" width="128" alt="Configgy icon">
 </p>
 
 <h1 align="center">Configgy</h1>
@@ -105,4 +105,4 @@ Configgy claude-backup | claude-restore
 
 ---
 
-<sub>A personal tool, shared as-is — no warranty. Built with Claude Code.</sub>
+<sub>Licensed under <a href="LICENSE">CC BY-NC-SA 4.0</a> · a personal tool, shared as-is — no warranty · built with Claude Code.</sub>
