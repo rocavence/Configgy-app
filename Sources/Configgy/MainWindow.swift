@@ -38,8 +38,7 @@ extension AppDelegate {
             b.font = .systemFont(ofSize: 11); b.frame = NSRect(x: x, y: h - 50, width: wdt, height: 24)
             b.autoresizingMask = [.minXMargin, .minYMargin]; bg.addSubview(b); return b
         }
-        _ = tool(L.t("掃描建議的設定", "Scan for Configs"), #selector(scanFromMain), x: w - 290, wdt: 130)
-        _ = tool(L.t("新增資料夾", "Add Folder"), #selector(addFolderFromMain), x: w - 152, wdt: 96)
+        _ = tool(L.t("加入自訂備份", "Add Custom"), #selector(addFolderFromMain), x: w - 196, wdt: 140)
         _ = tool("↻", #selector(refreshMainBtn), x: w - 48, wdt: 34)
 
         let scroll = NSScrollView(frame: NSRect(x: 14, y: 14, width: w - 28, height: h - 92))
@@ -110,13 +109,14 @@ extension AppDelegate {
         row.autoresizingMask = [.width]
         let iv = NSImageView(frame: NSRect(x: 14, y: (rowH - 38) / 2, width: 38, height: 38))
         iv.image = it.icon; iv.imageScaling = .scaleProportionallyUpOrDown; row.addSubview(iv)
+        let textW = width - 20 - 64 - 280
         let name = NSTextField(labelWithString: it.name)
         name.font = .systemFont(ofSize: 13.5, weight: .semibold)
-        name.frame = NSRect(x: 64, y: rowH / 2 + 1, width: width - 20 - 64 - 220, height: 18)
+        name.frame = NSRect(x: 64, y: rowH / 2 + 1, width: textW, height: 18)
         name.autoresizingMask = [.width]; row.addSubview(name)
         let detail = NSTextField(labelWithString: it.detail)
         detail.font = .systemFont(ofSize: 11); detail.textColor = .secondaryLabelColor; detail.lineBreakMode = .byTruncatingTail
-        detail.frame = NSRect(x: 64, y: rowH / 2 - 18, width: width - 20 - 64 - 220, height: 15)
+        detail.frame = NSRect(x: 64, y: rowH / 2 - 18, width: textW, height: 15)
         detail.autoresizingMask = [.width]; row.addSubview(detail)
 
         func btn(_ t: String, _ sel: Selector, x: CGFloat, wdt: CGFloat) -> NSButton {
@@ -124,13 +124,17 @@ extension AppDelegate {
             b.frame = NSRect(x: x, y: (rowH - 30) / 2, width: wdt, height: 30); b.autoresizingMask = [.minXMargin]
             b.identifier = NSUserInterfaceItemIdentifier(it.id); row.addSubview(b); return b
         }
+        let inner = width - 20
         if it.suggestion {
-            let add = btn(L.t("加入", "Add"), #selector(mainAdd(_:)), x: width - 20 - 92, wdt: 80)
-            add.keyEquivalent = ""
+            _ = btn(L.t("加入", "Add"), #selector(mainAdd(_:)), x: inner - 92, wdt: 80)
         } else {
-            _ = btn(L.t("還原", "Restore"), #selector(mainRestore(_:)), x: width - 20 - 196, wdt: 92)
-            let b = btn(L.t("備份", "Back Up"), #selector(mainBackup(_:)), x: width - 20 - 98, wdt: 88)
-            b.bezelStyle = .rounded
+            _ = btn(L.t("備份", "Back Up"), #selector(mainBackup(_:)), x: inner - 88, wdt: 80)
+            _ = btn(L.t("還原", "Restore"), #selector(mainRestore(_:)), x: inner - 176, wdt: 84)
+            if it.id.hasPrefix("t:") {
+                let rm = btn(L.t("移除", "Remove"), #selector(mainRemove(_:)), x: inner - 256, wdt: 76); rm.contentTintColor = .systemRed
+            } else if it.id == "zen" {
+                _ = btn(L.t("停用", "Disable"), #selector(mainRemove(_:)), x: inner - 256, wdt: 76)
+            }
         }
         return row
     }
@@ -138,9 +142,44 @@ extension AppDelegate {
     @objc func mainBackup(_ s: NSButton) { backupEntry((s.identifier?.rawValue) ?? "") }
     @objc func mainRestore(_ s: NSButton) { restoreEntry((s.identifier?.rawValue) ?? "") }
     @objc func mainAdd(_ s: NSButton) { addEntry((s.identifier?.rawValue) ?? "") }
+    @objc func mainRemove(_ s: NSButton) { removeEntry((s.identifier?.rawValue) ?? "") }
     @objc func refreshMainBtn() { refreshMain() }
-    @objc func scanFromMain() { discoverTargets(); refreshMain() }
     @objc func addFolderFromMain() { addTarget(); refreshMain() }
+
+    // 0 = cancel, 1 = config/setting only, 2 = also delete backup files
+    private func confirmRemoval(title: String, configLabel: String, deleteLabel: String, body: String) -> Int {
+        let d = "display dialog \"\(body)\" buttons {\"\(L.t("取消", "Cancel"))\", \"\(configLabel)\", \"\(deleteLabel)\"} default button \"\(configLabel)\" with title \"\(title)\""
+        let (code, out) = engine.sh("/usr/bin/osascript", ["-e", d])
+        if code != 0 { return 0 }
+        let s = String(data: out, encoding: .utf8) ?? ""
+        if s.contains(deleteLabel) { return 2 }
+        if s.contains(configLabel) { return 1 }
+        return 0
+    }
+    private func removeEntry(_ id: String) {
+        if id == "zen" {
+            let n = engine.listZips().count
+            let choice = confirmRemoval(
+                title: "Configgy", configLabel: L.t("只停用", "Disable"), deleteLabel: L.t("停用並刪備份", "Disable & delete"),
+                body: L.t("停用 Zen 備份？\\n\\n• 只停用：不再自動備份，保留雲端 \(n) 份\\n• 停用並刪備份：同時刪掉雲端 Zen 備份（不可復原）",
+                          "Disable Zen backup?\\n\\n• Disable: stop auto-backup, keep the \(n) backups\\n• Disable & delete: also remove the cloud Zen backups (irreversible)"))
+            if choice == 0 { return }
+            var st = Settings.load(engine.home); st.zenEnabled = false; Settings.save(st, home: engine.home); zenOn = false
+            if choice == 2 { fdaOK = engine.isTest ? true : canAccessBackup(); if requireFDA() { try? FileManager.default.removeItem(atPath: engine.dropboxDir) } }
+            buildMenu(); refreshMain(); return
+        }
+        guard id.hasPrefix("t:"), let d = TargetStore.load(engine.home).first(where: { $0.id == String(id.dropFirst(2)) }) else { return }
+        let g = GenericBackup(home: engine.home, def: d)
+        let n = g.listSnapshots().count
+        let choice = confirmRemoval(
+            title: "Configgy", configLabel: L.t("只移除設定", "Config only"), deleteLabel: L.t("連備份一起刪", "Delete backups too"),
+            body: L.t("移除「\(d.name)」？\\n\\n• 只移除設定：從清單拿掉，保留雲端 \(n) 份備份\\n• 連備份一起刪：同時刪掉雲端備份（不可復原）",
+                      "Remove \"\(d.name)\"?\\n\\n• Config only: drop from the list, keep the \(n) cloud backups\\n• Delete backups too: also remove the cloud backups (irreversible)"))
+        if choice == 0 { return }
+        TargetStore.remove(d.id, home: engine.home)
+        if choice == 2 { fdaOK = engine.isTest ? true : canAccessBackup(); if requireFDA() { try? FileManager.default.removeItem(atPath: g.dir) } }
+        buildMenu(); refreshMain()
+    }
 
     private func backupEntry(_ id: String) {
         fdaOK = engine.isTest ? true : canAccessBackup()

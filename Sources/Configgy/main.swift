@@ -218,36 +218,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
     func populate(_ m: NSMenu) {
         m.removeAllItems()
         zenOn = Settings.load(engine.home).zenEnabled && engine.hasZen
-        header.isEnabled = false
-        m.addItem(header)
         fdaItem.title = L.t("⚠︎ 授予完整磁碟取用權…", "⚠︎ Grant Full Disk Access…")
-        fdaItem.isHidden = fdaOK
-        m.addItem(fdaItem)
-        m.addItem(.separator())
+        m.addItem(fdaItem)                       // visibility set in refreshHeader
         m.addItem(withTitle: L.t("打開 Configgy 視窗…", "Open Configgy…"), action: #selector(showMain), keyEquivalent: "o").target = self
-        m.addItem(.separator())
-        m.addItem(withTitle: L.t("備份 Claude 設定", "Back Up Claude Config"), action: #selector(doClaudeBackup), keyEquivalent: "").target = self
-        m.addItem(withTitle: L.t("還原 Claude 設定", "Restore Claude Config"), action: #selector(doClaudeRestore), keyEquivalent: "").target = self
-        if zenOn {                              // Zen is opt-in via "Scan for Configs…"
-            m.addItem(.separator())
-            m.addItem(withTitle: L.t("備份 Zen（立即）", "Back Up Zen Now"), action: #selector(doBackup), keyEquivalent: "b").target = self
-            m.addItem(withTitle: L.t("還原 Zen…（可選工作區）", "Restore Zen…"), action: #selector(doRestore), keyEquivalent: "r").target = self
-        }
-        m.addItem(.separator())
-        // user-defined / discovered targets — flat per-target items, like Zen/Claude;
-        // each backs up to its own versioned zip under targets/<id>/.
-        let defs = TargetStore.load(engine.home)
-        for d in defs {
-            let ico = Icons.menuIcon(d.app)
-            let b = m.addItem(withTitle: L.t("備份 \(d.name)（立即）", "Back Up \(d.name) Now"), action: #selector(targetBackup(_:)), keyEquivalent: ""); b.target = self; b.representedObject = d.id; b.image = ico
-            let r = m.addItem(withTitle: L.t("還原 \(d.name)…", "Restore \(d.name)…"), action: #selector(targetRestore(_:)), keyEquivalent: ""); r.target = self; r.representedObject = d.id; r.image = ico
-        }
-        if !defs.isEmpty { m.addItem(.separator()) }
-        m.addItem(withTitle: L.t("新增自訂備份資料夾…", "Add Custom Backup Folder…"), action: #selector(addTarget), keyEquivalent: "").target = self
-        m.addItem(withTitle: L.t("掃描建議的設定…", "Scan for Configs…"), action: #selector(discoverTargets), keyEquivalent: "").target = self
-        if !defs.isEmpty {
-            m.addItem(withTitle: L.t("移除自訂目標…", "Remove a Target…"), action: #selector(removeTargetMenu), keyEquivalent: "").target = self
-        }
         m.addItem(.separator())
         if zenOn {
             pauseItem.title = L.t("暫停 Zen 自動備份/還原", "Pause Zen Auto Backup/Restore")
