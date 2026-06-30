@@ -109,7 +109,7 @@ extension AppDelegate {
         row.autoresizingMask = [.width]
         let iv = NSImageView(frame: NSRect(x: 14, y: (rowH - 38) / 2, width: 38, height: 38))
         iv.image = it.icon; iv.imageScaling = .scaleProportionallyUpOrDown; row.addSubview(iv)
-        let textW = width - 20 - 64 - 280
+        let textW = width - 20 - 64 - 132
         let name = NSTextField(labelWithString: it.name)
         name.font = .systemFont(ofSize: 13.5, weight: .semibold)
         name.frame = NSRect(x: 64, y: rowH / 2 + 1, width: textW, height: 18)
@@ -119,21 +119,26 @@ extension AppDelegate {
         detail.frame = NSRect(x: 64, y: rowH / 2 - 18, width: textW, height: 15)
         detail.autoresizingMask = [.width]; row.addSubview(detail)
 
-        func btn(_ t: String, _ sel: Selector, x: CGFloat, wdt: CGFloat) -> NSButton {
-            let b = NSButton(title: t, target: self, action: sel); b.bezelStyle = .rounded; b.controlSize = .regular
-            b.frame = NSRect(x: x, y: (rowH - 30) / 2, width: wdt, height: 30); b.autoresizingMask = [.minXMargin]
-            b.identifier = NSUserInterfaceItemIdentifier(it.id); row.addSubview(b); return b
+        func icon(_ sym: String, _ tip: String, _ sel: Selector, x: CGFloat, tint: NSColor? = nil) {
+            let b = NSButton(frame: NSRect(x: x, y: (rowH - 30) / 2, width: 30, height: 30))
+            b.bezelStyle = .rounded; b.imagePosition = .imageOnly
+            let cfg = NSImage.SymbolConfiguration(pointSize: 14, weight: .regular)
+            b.image = NSImage(systemSymbolName: sym, accessibilityDescription: tip)?.withSymbolConfiguration(cfg)
+            if let tint { b.contentTintColor = tint }
+            b.toolTip = tip; b.target = self; b.action = sel
+            b.identifier = NSUserInterfaceItemIdentifier(it.id); b.autoresizingMask = [.minXMargin]
+            row.addSubview(b)
         }
         let inner = width - 20
         if it.suggestion {
-            _ = btn(L.t("加入", "Add"), #selector(mainAdd(_:)), x: inner - 92, wdt: 80)
+            icon("plus.circle.fill", L.t("加入", "Add"), #selector(mainAdd(_:)), x: inner - 40, tint: .controlAccentColor)
         } else {
-            _ = btn(L.t("備份", "Back Up"), #selector(mainBackup(_:)), x: inner - 88, wdt: 80)
-            _ = btn(L.t("還原", "Restore"), #selector(mainRestore(_:)), x: inner - 176, wdt: 84)
+            icon("icloud.and.arrow.up", L.t("立即備份", "Back Up"), #selector(mainBackup(_:)), x: inner - 40)
+            icon("clock.arrow.circlepath", L.t("還原…", "Restore…"), #selector(mainRestore(_:)), x: inner - 78)
             if it.id.hasPrefix("t:") {
-                let rm = btn(L.t("移除", "Remove"), #selector(mainRemove(_:)), x: inner - 256, wdt: 76); rm.contentTintColor = .systemRed
+                icon("trash", L.t("移除", "Remove"), #selector(mainRemove(_:)), x: inner - 116, tint: .systemRed)
             } else if it.id == "zen" {
-                _ = btn(L.t("停用", "Disable"), #selector(mainRemove(_:)), x: inner - 256, wdt: 76)
+                icon("pause.circle", L.t("停用 Zen 備份", "Disable Zen"), #selector(mainRemove(_:)), x: inner - 116)
             }
         }
         return row
