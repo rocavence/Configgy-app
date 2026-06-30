@@ -21,15 +21,17 @@ extension AppDelegate {
     private func buildMainWindow() {
         let w = UI.s(760), h = UI.s(560)
         let win = NSWindow(contentRect: NSRect(x: 0, y: 0, width: w, height: h),
-                           styleMask: [.titled, .closable, .miniaturizable, .resizable], backing: .buffered, defer: false)
-        win.title = "Configgy"; win.titlebarAppearsTransparent = true
+                           styleMask: [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView], backing: .buffered, defer: false)
+        win.title = "Configgy"; win.titleVisibility = .hidden
+        win.titlebarAppearsTransparent = true; win.titlebarSeparatorStyle = .none   // seamless: no distinct title bar shade
+        win.isMovableByWindowBackground = true
         win.isReleasedWhenClosed = false          // we manage its lifetime; closing must not free it underneath an event
         win.minSize = NSSize(width: UI.s(640), height: UI.s(420))
         let bg = NSVisualEffectView(frame: NSRect(x: 0, y: 0, width: w, height: h))
         bg.material = .underWindowBackground; bg.blendingMode = .behindWindow; bg.state = .active
         bg.autoresizingMask = [.width, .height]; win.contentView = bg
 
-        let headerH = UI.s(58)
+        let headerH = UI.s(86)                    // top ~28pt is the (transparent) title strip with traffic lights
         let content = NSView(frame: NSRect(x: 0, y: 0, width: w, height: h - headerH))
         content.autoresizingMask = [.width, .height]; bg.addSubview(content); contentHost = content
 
@@ -38,7 +40,7 @@ extension AppDelegate {
 
         let tabs = CapsuleTabs(titles: [L.t("已備份保護", "Protected"), L.t("建議加入", "Suggestions")])
         tabs.onSelect = { [weak self] i in self?.mainTab = i; self?.mainSettings = false; self?.refreshMain() }
-        tabs.setFrameOrigin(NSPoint(x: UI.s(20), y: h - UI.s(46)))
+        tabs.setFrameOrigin(NSPoint(x: UI.s(20), y: h - UI.s(60)))   // below the traffic-light strip
         tabs.autoresizingMask = [.maxXMargin, .minYMargin]
         bg.addSubview(tabs); tabsView = tabs       // added last → above the toolbar layer
 
@@ -54,14 +56,15 @@ extension AppDelegate {
 
         // right-aligned toolbar buttons (rightmost first)
         var tx = toolbar.bounds.width - UI.s(20)
+        let btnY = toolbar.bounds.height - UI.s(56)   // align with the tabs row
         func tool(_ sym: String, _ t: String, _ act: @escaping () -> Void) {
             let b = PillButton(symbol: sym, title: t); b.onClick = act
             tx -= b.frame.width
-            b.setFrameOrigin(NSPoint(x: tx, y: (toolbar.bounds.height - b.frame.height) / 2 - UI.s(2)))
+            b.setFrameOrigin(NSPoint(x: tx, y: btnY))
             b.autoresizingMask = [.minXMargin]; toolbar.addSubview(b); tx -= UI.s(8)
         }
         if mainSettings {
-            // settings page; tabs return to lists
+            tool("xmark", L.t("關閉", "Close")) { [weak self] in self?.mainSettings = false; self?.refreshMain() }
         } else if mainTab == 0 {
             tool("gearshape", L.t("設定", "Settings")) { [weak self] in self?.mainSettings = true; self?.refreshMain() }
             tool("folder", L.t("備份資料夾", "Backup Folder")) { [weak self] in self?.openDropbox() }
@@ -80,6 +83,7 @@ extension AppDelegate {
         let scroll = NSScrollView(frame: host.bounds.insetBy(dx: 0, dy: 0))
         scroll.frame = NSRect(x: UI.s(16), y: UI.s(16), width: host.bounds.width - UI.s(32), height: host.bounds.height - UI.s(24))
         scroll.hasVerticalScroller = true; scroll.drawsBackground = false; scroll.autoresizingMask = [.width, .height]
+        scroll.scrollerStyle = .overlay; scroll.autohidesScrollers = true   // only on scroll, auto-hide when idle
         let doc = FlippedView(frame: NSRect(x: 0, y: 0, width: scroll.frame.width, height: 0)); doc.autoresizingMask = [.width]
         let rowH = UI.s(60); var y = UI.s(4)
         if items.isEmpty {
