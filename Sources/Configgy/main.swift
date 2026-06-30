@@ -103,9 +103,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
     var fdaOK = true
     var zenOn = false                          // Zen is opt-in (Settings.zenEnabled && Zen installed)
     var idleRevert: DispatchWorkItem?
-    var mainWin: NSWindow?                      // unified main window (list of targets + suggestions)
-    var mainDoc: FlippedView?
-    var mainStatus: NSTextField?
+    var mainWin: NSWindow?                      // unified main window
+    var mainTab = 0                             // 0 = 已備份保護, 1 = 建議加入
+    var mainSettings = false                    // settings page shown instead of a list
+    var tabsView: CapsuleTabs?
+    var toolbarHost: NSView?
+    var contentHost: NSView?
     let menu = NSMenu()                       // persistent; repopulated on every open via menuNeedsUpdate
     let header = NSMenuItem(title: "Configgy", action: nil, keyEquivalent: "")
     let fdaItem = NSMenuItem(title: "", action: #selector(openFDAGuide), keyEquivalent: "")
@@ -222,31 +225,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
         m.addItem(fdaItem)                       // visibility set in refreshHeader
         m.addItem(withTitle: L.t("打開 Configgy 視窗…", "Open Configgy…"), action: #selector(showMain), keyEquivalent: "o").target = self
         m.addItem(.separator())
-        if zenOn {
-            pauseItem.title = L.t("暫停 Zen 自動備份/還原", "Pause Zen Auto Backup/Restore")
-            m.addItem(pauseItem)
-        }
-        m.addItem(withTitle: L.t("開啟備份資料夾", "Open Backup Folder"), action: #selector(openDropbox), keyEquivalent: "").target = self
-        m.addItem(withTitle: L.t("備份位置…", "Backup Location…"), action: #selector(changeBackupLocation), keyEquivalent: "").target = self
-        // launch at login (default off)
-        let launch = m.addItem(withTitle: L.t("開機自動啟動", "Launch at Login"), action: #selector(toggleLaunchAtLogin), keyEquivalent: "")
-        launch.target = self
-        launch.state = (SMAppService.mainApp.status == .enabled) ? .on : .off
-        // language submenu
-        let langSub = NSMenu()
-        let cur = Settings.load(engine.home).language
-        for (code, name) in [("system", L.t("跟隨系統", "System")), ("zh", "中文"), ("en", "English")] {
-            let it = langSub.addItem(withTitle: name, action: #selector(setLanguage(_:)), keyEquivalent: "")
-            it.target = self; it.representedObject = code
-            it.state = ((cur ?? "system") == code) ? .on : .off
-        }
-        let langItem = NSMenuItem(title: L.t("語言", "Language"), action: nil, keyEquivalent: ""); langItem.submenu = langSub
-        m.addItem(langItem)
-        m.addItem(.separator())
-        let ver = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? ""
-        m.addItem(withTitle: L.t("關於 Configgy（v\(ver)）", "About Configgy (v\(ver))"), action: #selector(about), keyEquivalent: "").target = self
         m.addItem(withTitle: L.t("結束 Configgy", "Quit Configgy"), action: #selector(quit), keyEquivalent: "q").target = self
-        refreshHeader()
+        refreshHeader()                          // settings now live in the window's Settings page
     }
 
     func menuNeedsUpdate(_ menu: NSMenu) { populate(menu) }   // always reflect current targets/language/state
