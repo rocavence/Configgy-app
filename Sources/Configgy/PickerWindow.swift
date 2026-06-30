@@ -52,8 +52,8 @@ final class PickerWindow: NSObject {
     private func run(title: String, prompt: String, items: [PickerRow], ok: String, multi: Bool) -> [String]? {
         self.multi = multi
         selectedId = multi ? nil : items.first?.id
-        let width: CGFloat = 520, rowH: CGFloat = 52, headerH: CGFloat = 46, footerH: CGFloat = 60
-        let listH = min(CGFloat(items.count) * rowH, 460)
+        let width = UI.s(520), rowH = UI.s(52), headerH = UI.s(46), footerH = UI.s(60)
+        let listH = min(CGFloat(items.count) * rowH, UI.s(460))
         let winH = headerH + listH + footerH
 
         win = NSWindow(contentRect: NSRect(x: 0, y: 0, width: width, height: winH),
@@ -67,33 +67,33 @@ final class PickerWindow: NSObject {
         win.contentView = bg
 
         let head = NSTextField(labelWithString: prompt)
-        head.font = .systemFont(ofSize: 12); head.textColor = .secondaryLabelColor
+        head.font = UI.font(12); head.textColor = .secondaryLabelColor
         head.lineBreakMode = .byTruncatingTail
-        head.frame = NSRect(x: 22, y: winH - 34, width: width - 44 - (multi ? 116 : 0), height: 18)
+        head.frame = NSRect(x: UI.s(22), y: winH - UI.s(34), width: width - UI.s(44) - (multi ? UI.s(116) : 0), height: UI.s(18))
         head.autoresizingMask = [.minYMargin, .width]
         bg.addSubview(head)
         if multi {                                // Select All / Deselect All — top-right
             let sa = NSButton(title: L.t("全選", "Select All"), target: self, action: #selector(selectAllTapped))
-            sa.bezelStyle = .rounded; sa.controlSize = .small; sa.font = .systemFont(ofSize: 11)
-            sa.frame = NSRect(x: width - 116, y: winH - 38, width: 102, height: 24)
+            sa.bezelStyle = .rounded; sa.font = UI.font(11)
+            sa.frame = NSRect(x: width - UI.s(116), y: winH - UI.s(38), width: UI.s(102), height: UI.s(26))
             sa.autoresizingMask = [.minXMargin, .minYMargin]
             bg.addSubview(sa); selectAllBtn = sa
         }
 
-        let scroll = NSScrollView(frame: NSRect(x: 12, y: footerH, width: width - 24, height: listH))
+        let scroll = NSScrollView(frame: NSRect(x: UI.s(12), y: footerH, width: width - UI.s(24), height: listH))
         scroll.hasVerticalScroller = true; scroll.drawsBackground = false
         scroll.autoresizingMask = [.width, .height]
-        let doc = FlippedView(frame: NSRect(x: 0, y: 0, width: width - 24, height: CGFloat(items.count) * rowH))
-        for (i, it) in items.enumerated() { doc.addSubview(makeRow(it, y: CGFloat(i) * rowH, width: width - 24, rowH: rowH)) }
+        let doc = FlippedView(frame: NSRect(x: 0, y: 0, width: width - UI.s(24), height: CGFloat(items.count) * rowH))
+        for (i, it) in items.enumerated() { doc.addSubview(makeRow(it, y: CGFloat(i) * rowH, width: width - UI.s(24), rowH: rowH)) }
         scroll.documentView = doc
         bg.addSubview(scroll)
 
         let cancel = NSButton(title: L.t("取消", "Cancel"), target: self, action: #selector(cancelTapped))
-        cancel.bezelStyle = .rounded; cancel.keyEquivalent = "\u{1b}"
-        cancel.frame = NSRect(x: width - 210, y: 14, width: 94, height: 32)
+        cancel.bezelStyle = .rounded; cancel.keyEquivalent = "\u{1b}"; cancel.font = UI.font(13)
+        cancel.frame = NSRect(x: width - UI.s(212), y: UI.s(14), width: UI.s(96), height: UI.s(32))
         let okB = NSButton(title: ok, target: self, action: #selector(okTapped))
-        okB.bezelStyle = .rounded; okB.keyEquivalent = "\r"
-        okB.frame = NSRect(x: width - 110, y: 14, width: 96, height: 32)
+        okB.bezelStyle = .rounded; okB.keyEquivalent = "\r"; okB.font = UI.font(13)
+        okB.frame = NSRect(x: width - UI.s(110), y: UI.s(14), width: UI.s(96), height: UI.s(32))
         cancel.autoresizingMask = [.minXMargin]; okB.autoresizingMask = [.minXMargin]
         bg.addSubview(cancel); bg.addSubview(okB)
 
@@ -107,30 +107,33 @@ final class PickerWindow: NSObject {
     }
 
     private func makeRow(_ it: PickerRow, y: CGFloat, width: CGFloat, rowH: CGFloat) -> NSView {
-        let row = NSView(frame: NSRect(x: 6, y: y + 3, width: width - 12, height: rowH - 6))
+        let row = NSView(frame: NSRect(x: UI.s(6), y: y + UI.s(3), width: width - UI.s(12), height: rowH - UI.s(6)))
         row.wantsLayer = true
-        row.layer?.cornerRadius = 8
+        row.layer?.cornerRadius = UI.s(8)
         row.identifier = NSUserInterfaceItemIdentifier(it.id)
         rowViews[it.id] = row
         if !multi, it.id == selectedId { row.layer?.backgroundColor = NSColor.controlAccentColor.withAlphaComponent(0.16).cgColor }
-
-        let iv = NSImageView(frame: NSRect(x: 12, y: (rowH - 6 - 30) / 2, width: 30, height: 30))
+        let inH = rowH - UI.s(6)
+        let isz = UI.s(30)
+        let iv = NSImageView(frame: NSRect(x: UI.s(12), y: (inH - isz) / 2, width: isz, height: isz))
         iv.image = it.icon; iv.imageScaling = .scaleProportionallyUpOrDown
         row.addSubview(iv)
 
         let hasSub = !it.subtitle.isEmpty
+        let textX = UI.s(54), textW = width - UI.s(12) - UI.s(54) - UI.s(44)
         let title = NSTextField(labelWithString: it.title)
-        title.font = .systemFont(ofSize: 13, weight: .medium)
-        title.frame = NSRect(x: 54, y: hasSub ? (rowH - 6) / 2 - 1 : (rowH - 6 - 18) / 2, width: width - 12 - 54 - 44, height: 18)
+        title.font = UI.font(13, .medium); title.lineBreakMode = .byTruncatingTail
+        title.frame = NSRect(x: textX, y: hasSub ? inH / 2 - UI.s(1) : (inH - UI.s(18)) / 2, width: textW, height: UI.s(18))
         row.addSubview(title)
         if hasSub {
             let sub = NSTextField(labelWithString: it.subtitle)
-            sub.font = .systemFont(ofSize: 11); sub.textColor = .secondaryLabelColor
-            sub.frame = NSRect(x: 54, y: (rowH - 6) / 2 - 18, width: width - 12 - 54 - 44, height: 15)
+            sub.font = UI.font(11); sub.textColor = .secondaryLabelColor; sub.lineBreakMode = .byTruncatingTail
+            sub.frame = NSRect(x: textX, y: inH / 2 - UI.s(18), width: textW, height: UI.s(15))
             row.addSubview(sub)
         }
         if multi {
-            let civ = NSImageView(frame: NSRect(x: width - 12 - 30, y: (rowH - 6 - 22) / 2, width: 22, height: 22))
+            let csz = UI.s(22)
+            let civ = NSImageView(frame: NSRect(x: width - UI.s(12) - csz, y: (inH - csz) / 2, width: csz, height: csz))
             civ.imageScaling = .scaleProportionallyUpOrDown
             row.addSubview(civ); checkViews[it.id] = civ; checked[it.id] = false
             updateCheck(it.id, false)             // start unchecked; whole row toggles it

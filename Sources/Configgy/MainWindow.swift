@@ -2,6 +2,7 @@ import AppKit
 
 // One unified window (Mole-style): every backup target in a single list with
 // inline Back Up / Restore actions, plus a "suggested" section to add more.
+// Scales 1.5× on 3K+ displays (see UI).
 extension AppDelegate {
     struct Entry { let id: String; let name: String; let icon: NSImage; let detail: String; let suggestion: Bool }
 
@@ -17,50 +18,61 @@ extension AppDelegate {
     }
 
     private func buildMainWindow() {
-        let w: CGFloat = 760, h: CGFloat = 560
+        let w = UI.s(760), h = UI.s(560)
         let win = NSWindow(contentRect: NSRect(x: 0, y: 0, width: w, height: h),
                            styleMask: [.titled, .closable, .miniaturizable, .resizable], backing: .buffered, defer: false)
-        win.title = "Configgy"; win.titlebarAppearsTransparent = true; win.minSize = NSSize(width: 620, height: 420)
+        win.title = "Configgy"; win.titlebarAppearsTransparent = true
+        win.minSize = NSSize(width: UI.s(620), height: UI.s(420))
         let bg = NSVisualEffectView(frame: NSRect(x: 0, y: 0, width: w, height: h))
         bg.material = .underWindowBackground; bg.blendingMode = .behindWindow; bg.state = .active
         bg.autoresizingMask = [.width, .height]; win.contentView = bg
 
         let title = NSTextField(labelWithString: "Configgy")
-        title.font = .systemFont(ofSize: 18, weight: .bold); title.frame = NSRect(x: 24, y: h - 50, width: 300, height: 24)
+        title.font = UI.font(18, .bold); title.frame = NSRect(x: UI.s(24), y: h - UI.s(50), width: UI.s(300), height: UI.s(26))
         title.autoresizingMask = [.minYMargin]; bg.addSubview(title)
         let sub = NSTextField(labelWithString: "")
-        sub.font = .systemFont(ofSize: 11); sub.textColor = .secondaryLabelColor
-        sub.frame = NSRect(x: 24, y: h - 70, width: 400, height: 16); sub.autoresizingMask = [.minYMargin]
+        sub.font = UI.font(11); sub.textColor = .secondaryLabelColor
+        sub.frame = NSRect(x: UI.s(24), y: h - UI.s(70), width: UI.s(400), height: UI.s(16)); sub.autoresizingMask = [.minYMargin]
         sub.identifier = NSUserInterfaceItemIdentifier("subtitle"); bg.addSubview(sub)
 
-        func tool(_ sym: String, _ tip: String, _ sel: Selector, x: CGFloat) {
-            let b = NSButton(frame: NSRect(x: x, y: h - 53, width: 30, height: 30))
-            b.bezelStyle = .rounded; b.imagePosition = .imageOnly
-            let cfg = NSImage.SymbolConfiguration(pointSize: 14, weight: .regular)
-            b.image = NSImage(systemSymbolName: sym, accessibilityDescription: tip)?.withSymbolConfiguration(cfg)
-            b.toolTip = tip; b.target = self; b.action = sel
+        // toolbar icon+text buttons, right-aligned
+        var tx = w - UI.s(16)
+        func tool(_ sym: String, _ titleText: String, _ sel: Selector) {
+            let b = makeIconButton(sym, titleText, sel, tint: nil, id: nil)
+            tx -= b.frame.width
+            b.setFrameOrigin(NSPoint(x: tx, y: h - UI.s(52)))
             b.autoresizingMask = [.minXMargin, .minYMargin]; bg.addSubview(b)
+            tx -= UI.s(8)
         }
-        tool("folder.badge.plus", L.t("加入自訂備份", "Add Custom Backup"), #selector(addFolderFromMain), x: w - 122)
-        tool("arrow.clockwise", L.t("重新掃描", "Rescan"), #selector(refreshMainBtn), x: w - 84)
-        tool("folder", L.t("開啟備份資料夾", "Open Backup Folder"), #selector(openDropbox), x: w - 46)
+        tool("folder", L.t("備份資料夾", "Backup Folder"), #selector(openDropbox))
+        tool("arrow.clockwise", L.t("重新掃描", "Rescan"), #selector(refreshMainBtn))
+        tool("folder.badge.plus", L.t("加入自訂備份", "Add Custom"), #selector(addFolderFromMain))
 
-        let scroll = NSScrollView(frame: NSRect(x: 14, y: 14, width: w - 28, height: h - 92))
+        let scroll = NSScrollView(frame: NSRect(x: UI.s(14), y: UI.s(14), width: w - UI.s(28), height: h - UI.s(92)))
         scroll.hasVerticalScroller = true; scroll.drawsBackground = false; scroll.autoresizingMask = [.width, .height]
-        let doc = FlippedView(frame: NSRect(x: 0, y: 0, width: w - 28, height: 0)); doc.autoresizingMask = [.width]
+        let doc = FlippedView(frame: NSRect(x: 0, y: 0, width: w - UI.s(28), height: 0)); doc.autoresizingMask = [.width]
         scroll.documentView = doc; bg.addSubview(scroll)
         win.delegate = self
         mainWin = win; mainDoc = doc; mainStatus = sub
     }
 
+    // a refined icon+text button, sized to fit
+    private func makeIconButton(_ sym: String, _ titleText: String, _ sel: Selector, tint: NSColor?, id: String?) -> NSButton {
+        let b = NSButton(title: " " + titleText, target: self, action: sel)
+        b.bezelStyle = .rounded; b.imagePosition = .imageLeading; b.font = UI.font(12)
+        b.image = NSImage(systemSymbolName: sym, accessibilityDescription: titleText)?.withSymbolConfiguration(UI.symCfg(13))
+        b.toolTip = titleText
+        if let tint { b.contentTintColor = tint }
+        if let id { b.identifier = NSUserInterfaceItemIdentifier(id) }
+        b.sizeToFit()
+        var f = b.frame; f.size.height = UI.s(30); f.size.width = f.width + UI.s(14); b.frame = f
+        return b
+    }
+
     private func entries() -> [Entry] {
         var out: [Entry] = []
-        out.append(Entry(id: "claude", name: "Claude Code", icon: Icons.app("com.anthropic.claude"),
-                         detail: claudeDetail(), suggestion: false))
-        if zenOn {
-            out.append(Entry(id: "zen", name: "Zen Browser", icon: Icons.app("app.zen-browser.zen"),
-                             detail: zenDetail(), suggestion: false))
-        }
+        out.append(Entry(id: "claude", name: "Claude Code", icon: Icons.app("com.anthropic.claude"), detail: claudeDetail(), suggestion: false))
+        if zenOn { out.append(Entry(id: "zen", name: "Zen Browser", icon: Icons.app("app.zen-browser.zen"), detail: zenDetail(), suggestion: false)) }
         let defs = TargetStore.load(engine.home)
         for d in defs {
             let g = GenericBackup(home: engine.home, def: d)
@@ -88,63 +100,60 @@ extension AppDelegate {
         guard let doc = mainDoc else { return }
         let items = entries()
         let active = items.filter { !$0.suggestion }
-        (mainStatus)?.stringValue = L.t("備份目標 \(active.count) 個", "\(active.count) backup target(s)")
+        mainStatus?.stringValue = L.t("備份目標 \(active.count) 個", "\(active.count) backup target(s)")
         doc.subviews.forEach { $0.removeFromSuperview() }
-        let rowH: CGFloat = 64; let w = doc.bounds.width
-        var y: CGFloat = 6
-        var sawSuggestionHeader = false
+        let rowH = UI.s(64); let w = doc.bounds.width
+        var y = UI.s(6); var sawSuggestionHeader = false
         for it in items {
             if it.suggestion && !sawSuggestionHeader {
                 let hdr = NSTextField(labelWithString: L.t("建議加入", "Suggestions"))
-                hdr.font = .systemFont(ofSize: 11, weight: .semibold); hdr.textColor = .secondaryLabelColor
-                hdr.frame = NSRect(x: 18, y: y + 6, width: w - 36, height: 16); doc.addSubview(hdr)
-                y += 28; sawSuggestionHeader = true
+                hdr.font = UI.font(11, .semibold); hdr.textColor = .secondaryLabelColor
+                hdr.frame = NSRect(x: UI.s(18), y: y + UI.s(6), width: w - UI.s(36), height: UI.s(16)); doc.addSubview(hdr)
+                y += UI.s(28); sawSuggestionHeader = true
             }
             doc.addSubview(makeMainRow(it, y: y, width: w, rowH: rowH))
-            y += rowH + 4
+            y += rowH + UI.s(4)
         }
-        doc.frame = NSRect(x: 0, y: 0, width: w, height: max(y + 6, 1))
+        doc.frame = NSRect(x: 0, y: 0, width: w, height: max(y + UI.s(6), 1))
     }
 
     private func makeMainRow(_ it: Entry, y: CGFloat, width: CGFloat, rowH: CGFloat) -> NSView {
-        let row = NSView(frame: NSRect(x: 10, y: y, width: width - 20, height: rowH))
-        row.wantsLayer = true; row.layer?.cornerRadius = 10
+        let row = NSView(frame: NSRect(x: UI.s(10), y: y, width: width - UI.s(20), height: rowH))
+        row.wantsLayer = true; row.layer?.cornerRadius = UI.s(10)
         row.layer?.backgroundColor = NSColor.gray.withAlphaComponent(0.10).cgColor
         row.autoresizingMask = [.width]
-        let iv = NSImageView(frame: NSRect(x: 14, y: (rowH - 38) / 2, width: 38, height: 38))
+        let inner = width - UI.s(20)
+        let isz = UI.s(38)
+        let iv = NSImageView(frame: NSRect(x: UI.s(14), y: (rowH - isz) / 2, width: isz, height: isz))
         iv.image = it.icon; iv.imageScaling = .scaleProportionallyUpOrDown; row.addSubview(iv)
-        let textW = width - 20 - 64 - 132
+
+        // action buttons, right-aligned (rightmost added first)
+        var x = inner - UI.s(12)
+        func place(_ sym: String, _ t: String, _ sel: Selector, _ tint: NSColor?) {
+            let b = makeIconButton(sym, t, sel, tint: tint, id: it.id)
+            x -= b.frame.width
+            b.setFrameOrigin(NSPoint(x: x, y: (rowH - b.frame.height) / 2))
+            b.autoresizingMask = [.minXMargin]; row.addSubview(b)
+            x -= UI.s(8)
+        }
+        if it.suggestion {
+            place("plus.circle.fill", L.t("加入", "Add"), #selector(mainAdd(_:)), .controlAccentColor)
+        } else {
+            place("icloud.and.arrow.up", L.t("備份", "Back Up"), #selector(mainBackup(_:)), nil)
+            place("clock.arrow.circlepath", L.t("還原", "Restore"), #selector(mainRestore(_:)), nil)
+            if it.id.hasPrefix("t:") { place("trash", L.t("移除", "Remove"), #selector(mainRemove(_:)), .systemRed) }
+            else if it.id == "zen" { place("pause.circle", L.t("停用", "Disable"), #selector(mainRemove(_:)), nil) }
+        }
+
+        let nameX = UI.s(64); let textW = max(x - nameX, UI.s(80))
         let name = NSTextField(labelWithString: it.name)
-        name.font = .systemFont(ofSize: 13.5, weight: .semibold)
-        name.frame = NSRect(x: 64, y: rowH / 2 + 1, width: textW, height: 18)
+        name.font = UI.font(13.5, .semibold); name.lineBreakMode = .byTruncatingTail
+        name.frame = NSRect(x: nameX, y: rowH / 2 + UI.s(1), width: textW, height: UI.s(18))
         name.autoresizingMask = [.width]; row.addSubview(name)
         let detail = NSTextField(labelWithString: it.detail)
-        detail.font = .systemFont(ofSize: 11); detail.textColor = .secondaryLabelColor; detail.lineBreakMode = .byTruncatingTail
-        detail.frame = NSRect(x: 64, y: rowH / 2 - 18, width: textW, height: 15)
+        detail.font = UI.font(11); detail.textColor = .secondaryLabelColor; detail.lineBreakMode = .byTruncatingTail
+        detail.frame = NSRect(x: nameX, y: rowH / 2 - UI.s(18), width: textW, height: UI.s(15))
         detail.autoresizingMask = [.width]; row.addSubview(detail)
-
-        func icon(_ sym: String, _ tip: String, _ sel: Selector, x: CGFloat, tint: NSColor? = nil) {
-            let b = NSButton(frame: NSRect(x: x, y: (rowH - 30) / 2, width: 30, height: 30))
-            b.bezelStyle = .rounded; b.imagePosition = .imageOnly
-            let cfg = NSImage.SymbolConfiguration(pointSize: 14, weight: .regular)
-            b.image = NSImage(systemSymbolName: sym, accessibilityDescription: tip)?.withSymbolConfiguration(cfg)
-            if let tint { b.contentTintColor = tint }
-            b.toolTip = tip; b.target = self; b.action = sel
-            b.identifier = NSUserInterfaceItemIdentifier(it.id); b.autoresizingMask = [.minXMargin]
-            row.addSubview(b)
-        }
-        let inner = width - 20
-        if it.suggestion {
-            icon("plus.circle.fill", L.t("加入", "Add"), #selector(mainAdd(_:)), x: inner - 40, tint: .controlAccentColor)
-        } else {
-            icon("icloud.and.arrow.up", L.t("立即備份", "Back Up"), #selector(mainBackup(_:)), x: inner - 40)
-            icon("clock.arrow.circlepath", L.t("還原…", "Restore…"), #selector(mainRestore(_:)), x: inner - 78)
-            if it.id.hasPrefix("t:") {
-                icon("trash", L.t("移除", "Remove"), #selector(mainRemove(_:)), x: inner - 116, tint: .systemRed)
-            } else if it.id == "zen" {
-                icon("pause.circle", L.t("停用 Zen 備份", "Disable Zen"), #selector(mainRemove(_:)), x: inner - 116)
-            }
-        }
         return row
     }
 
