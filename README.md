@@ -62,6 +62,27 @@ warning when needed).
 - **Zen is careful** — backing up Zen offers *Cancel · Back up on quit · Back up now*,
   and "Back up now" confirms again before quitting your browser.
 
+### Screenshots
+
+<table>
+  <tr>
+    <td width="50%"><img src="Resources/screenshots/protected-dark.png" alt="Protected tab — active backup targets with inline Restore / Back Up"></td>
+    <td width="50%"><img src="Resources/screenshots/suggestions-dark.png" alt="Suggestions tab — sync-less configs discovered on this Mac"></td>
+  </tr>
+  <tr>
+    <td><sub><b>Protected</b> — your active targets. Each row shows the app icon, <i>last backup · N snapshots</i>, and inline <b>Restore</b> / <b>Back Up</b>; Zen also carries its pause badge.</sub></td>
+    <td><sub><b>Suggestions</b> — sync-less configs found on this Mac (shell, git, SSH config without keys, tmux, Zed, gh without its token). Tap <b>Add</b> to start versioning one.</sub></td>
+  </tr>
+  <tr>
+    <td width="50%"><img src="Resources/screenshots/settings-dark.png" alt="In-window settings page"></td>
+    <td width="50%"><img src="Resources/screenshots/protected-light.png" alt="Light mode — appearance-aware Finder-like palette"></td>
+  </tr>
+  <tr>
+    <td><sub><b>Settings</b> — in-window, not a deep menu: Theme, Enlarge UI, pause Zen, Launch at Login, language, backup location, About.</sub></td>
+    <td><sub><b>Light mode</b> — the same window in the appearance-aware, Finder-like light palette; colours re-resolve when the system appearance flips.</sub></td>
+  </tr>
+</table>
+
 ## Install
 
 1. Download the `.dmg` from [Releases](https://github.com/rocavence/Configgy-app/releases),
