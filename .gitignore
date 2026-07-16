@@ -6,3 +6,6 @@
 DerivedData/
 xcuserdata/
 dist/
+
+# 本機工作筆記（非對外文件）
+HANDOFF.md
