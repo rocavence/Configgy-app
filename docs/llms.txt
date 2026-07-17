@@ -1,0 +1,93 @@
+# Configgy
+
+> Configgy is a free, open-source macOS menu bar app that backs up and restores the local config you'd hate to lose but don't want in a blanket cloud sync: Zen Browser, Claude Code, and any folder you point it at. Each target is versioned as dated zip snapshots in Dropbox / iCloud Drive / Google Drive / a folder you choose, with history, diff preview before restore, and rollback. Secrets — passwords, cookies, history, SSH private keys, gh tokens — are never copied.
+
+- Platform: macOS 14 (Sonoma) or later; primarily used on macOS 26
+- Price: Free, open source (CC BY-NC-SA 4.0)
+- Author: rocavence (https://github.com/rocavence)
+- Download: https://github.com/rocavence/Configgy-app/releases/latest
+- Source code: https://github.com/rocavence/Configgy-app
+- Website: https://configgy.rocavence.com
+- Current version: 0.3.0
+
+## What it does
+
+Configgy keeps painful-to-lose settings versioned, portable, and one click away. It runs as a menubar agent; everything you do lives in one window.
+
+| Target | Mechanism | Trigger |
+|---|---|---|
+| Zen Browser | versioned .zip snapshots (keeps 10, deduped); each zip self-restores via an embedded restore.sh | automatic when you quit Zen |
+| Claude Code | versioned .zip snapshots of ~/.claude (plus ~/.agents/skills); restore reinstalls plugins | manual |
+| Custom / discovered targets | versioned, absolute-path-preserving .zip snapshots | manual |
+
+Backups land in `…/Configgy/` inside a backup location you pick: Dropbox (default when found), iCloud Drive, Google Drive, or a custom folder. Filenames carry the host name so two Macs never collide.
+
+## The model
+
+A *target* is just "a set of paths, versioned as dated zips, with history, diff-preview, and additive restore". Zen and generic targets share that contract; Claude Code is the same shape plus a plugin-reinstall step. Zip snapshots beat a single rsync mirror because rollback comes for free.
+
+- Opt-in, not assumed: only Claude Code is enabled out of the box. Zen and everything else are suggestions you adopt. The app runs fine on a Mac without Zen.
+- Restores preview their diff and confirm first; overwritten files are backed up before being replaced. Picking an older snapshot is the rollback.
+- Re-adopt on open: Configgy scans the backup folder on launch, so targets backed up on another Mac reappear ready to restore.
+- Zen is careful: backing up Zen offers Cancel / Back up on quit / Back up now, and "Back up now" confirms again before quitting your browser.
+
+## Secrets policy
+
+Passwords, cookies, browsing history, SSH private keys, and the token-bearing `gh hosts.yml` are never copied — those come back via your Mozilla account and Keychain. Discovery only suggests config that has no cloud sync of its own, and deliberately excludes secrets.
+
+## The window
+
+One window with a capsule tab switching two lists:
+
+- Protected (已備份保護): active targets. Each row shows the app icon, name, "last backup · N snapshots", and Back Up / Restore / Remove as compact pill buttons that tint on hover (green / orange / red).
+- Suggestions (建議加入): Zen, plus sync-less configs discovered on this Mac — shell dotfiles, git, ~/.ssh/config, Zed, VS Code, terminals, Karabiner, Hammerspoon, gh (without its token), and menubar utilities like MonitorControl / Moom / IINA. Tap Add to start versioning one.
+
+A gear → Settings page (in-window, with an ✕ to close) holds Theme (System / Light / Dark), Enlarge UI (1.1×), Launch at Login, Backup Location, and About. The menubar menu itself is just Open Configgy, About, Quit (plus an FDA warning when needed). Light and dark are both first-class, with an appearance-aware, Finder-like light palette.
+
+## Install notes
+
+- Download the .dmg from https://github.com/rocavence/Configgy-app/releases and drag Configgy to Applications.
+- Self-signed (not Apple-notarized). On first launch, open via right-click → Open, or run `xattr -dr com.apple.quarantine /Applications/Configgy.app`.
+- Full Disk Access is required so it can read protected config folders and write to your cloud backup folder. macOS never prompts for this automatically, so the app guides you on first launch.
+- Pick a backup location: Dropbox by default; otherwise Dropbox / iCloud Drive / Google Drive / a custom folder.
+
+## Build from source
+
+Requires Xcode Command Line Tools (`swift`, `codesign`); no full Xcode needed.
+
+```sh
+sh Scripts/build-app.sh           # → build/Configgy.app
+cp -R build/Configgy.app /Applications/
+```
+
+The build signs with a stable self-signed identity (`Configgy` / `Findly Self-Signed`) so Full Disk Access survives rebuilds.
+
+## CLI
+
+The same binary runs headless:
+
+```
+Configgy backup [--force] | list | status | preview <zip>
+Configgy restore [<zip> [ws <uuid…>]] | workspaces <zip>
+Configgy claude-backup | claude-list | claude-restore [<zip>] | claude-preview <zip>
+Configgy discover | targets | locations | target-add <id> <name> <path…>
+Configgy target-backup <id> | target-list <id> | target-restore <id> [<zip>] | target-preview <id> [<zip>]
+```
+
+## Tech stack
+
+Native Swift (AppKit), no dependencies. Menubar agent (NSStatusItem) plus a single management window; the same binary doubles as a CLI. Backups are zip archives written to a user-chosen cloud folder.
+
+## History
+
+Configgy started as Zennly, a one-trick menubar app that zipped the Zen Browser profile to Dropbox on quit. Claude Code config joined as a second target, then the idea generalized into the target model above. It was built almost entirely through conversation with Claude Code (Opus), with the UI tuned from screenshots.
+
+## Links
+
+- Website: https://configgy.rocavence.com
+- Source: https://github.com/rocavence/Configgy-app
+- Releases: https://github.com/rocavence/Configgy-app/releases/latest
+- README (English): https://github.com/rocavence/Configgy-app/blob/main/README.md
+- README (繁體中文): https://github.com/rocavence/Configgy-app/blob/main/README.zh-Hant.md
+- Author: https://github.com/rocavence
+- License: CC BY-NC-SA 4.0
