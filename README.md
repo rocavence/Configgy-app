@@ -14,6 +14,8 @@
   backups land in <code>Dropbox / iCloud / Google&nbsp;Drive / a folder</code> under <code>…/Configgy/</code>
 </p>
 
+<p align="center"><a href="https://configgy.rocavence.com">configgy.rocavence.com</a></p>
+
 <p align="center"><b>English</b> · <a href="README.zh-Hant.md">繁體中文</a></p>
 
 ---

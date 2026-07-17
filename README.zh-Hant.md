@@ -14,6 +14,8 @@
   備份落在 <code>Dropbox / iCloud / Google&nbsp;雲端硬碟 / 自選資料夾</code> 下的 <code>…/Configgy/</code>
 </p>
 
+<p align="center"><a href="https://configgy.rocavence.com">configgy.rocavence.com</a></p>
+
 <p align="center"><a href="README.md">English</a> · <b>繁體中文</b></p>
 
 ---
