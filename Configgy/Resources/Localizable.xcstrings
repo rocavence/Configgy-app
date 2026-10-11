@@ -441,42 +441,42 @@
         }
       }
     },
-    "%lld earlier": {
+    "%lld earlier backups; newest %@": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "%lld earlier"
+            "value": "%lld earlier backups; newest %@"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "更早還有 %lld 份"
+            "value": "更早還有 %1$lld 份備份，最新的是 %2$@"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "それ以前に %lld 個"
+            "value": "それ以前のバックアップ %1$lld 個。最新は %2$@"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "이전 %lld개"
+            "value": "이전 백업 %1$lld개, 가장 최근은 %2$@"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "%lld anteriores"
+            "value": "%1$lld copias anteriores; la más reciente: %2$@"
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "%lld anteriores"
+            "value": "%1$lld backups anteriores; o mais recente: %2$@"
           }
         }
       }

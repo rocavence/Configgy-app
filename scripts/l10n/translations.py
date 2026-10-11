@@ -22,6 +22,7 @@ T = {
 "%lld need attention": ["%lld 個需要注意", "%lld 件に注意が必要", "%lld개 확인 필요", "%lld necesitan atención", "%lld precisam de atenção"],
 "%lld older backups contain secret files.": ["%lld 份舊備份含有祕密檔。", "%lld 個の古いバックアップに秘密ファイルがあります。", "이전 백업 %lld개에 비밀 파일이 있습니다.", "%lld copias antiguas contienen archivos secretos.", "%lld backups antigos contêm arquivos secretos."],
 "%lld days": ["%lld 天", "%lld日", "%lld일", "%lld días", "%lld dias"],
+"%lld earlier backups; newest %@": ["更早還有 %1$lld 份備份，最新的是 %2$@", "それ以前のバックアップ %1$lld 個。最新は %2$@", "이전 백업 %1$lld개, 가장 최근은 %2$@", "%1$lld copias anteriores; la más reciente: %2$@", "%1$lld backups anteriores; o mais recente: %2$@"],
 "%lld earlier": ["更早還有 %lld 份", "それ以前に %lld 個", "이전 %lld개", "%lld anteriores", "%lld anteriores"],
 "Add %@": ["加入 %@", "%@ を追加", "%@ 추가", "Añadir %@", "Adicionar %@"],
 "Also worth protecting": ["也值得保護", "ほかにも保護したいもの", "함께 보호할 만한 것", "También vale la pena proteger", "Também vale proteger"],

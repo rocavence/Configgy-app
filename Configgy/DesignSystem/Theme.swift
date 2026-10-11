@@ -65,9 +65,13 @@ extension View {
 /// light and dark both come for free.
 enum Palette {
     static let ink = Color.primary
-    static let muted = Color.secondary
-    static let faint = Color(nsColor: .tertiaryLabelColor)
-    static let hairline = Color(nsColor: .separatorColor)
+    /// Secondary text: about 8:1 on the window background in both appearances.
+    static let muted = Color.primary.opacity(0.75)
+    /// The quietest text still meant to be read: 4.5:1 or better in light and dark
+    /// (the system's tertiary label is near 2:1 in dark mode).
+    static let faint = Color.primary.opacity(0.6)
+    /// Dividers, guides and timeline lanes; visible on dark as well as light.
+    static let hairline = Color.primary.opacity(0.14)
     static let background = Color(nsColor: .windowBackgroundColor)
     static let hover = Color.primary.opacity(0.06)
     static let card = Color.primary.opacity(0.035)

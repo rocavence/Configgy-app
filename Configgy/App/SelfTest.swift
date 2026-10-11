@@ -210,6 +210,11 @@ enum SelfTest {
         let mainShot = main.snapshot()
         check("the main window renders", mainShot != nil)
         save(mainShot, shots, "main")
+        // A week: older backups must still show, at each lane's left edge.
+        UserDefaults.standard.set(7, forKey: "Configgy.timelineRange")
+        try await Task.sleep(for: .milliseconds(500))
+        save(main.snapshot(), shots, "main-week")
+        UserDefaults.standard.set(30, forKey: "Configgy.timelineRange")
         main.close()
 
         let settings = SettingsWindow(model: model)

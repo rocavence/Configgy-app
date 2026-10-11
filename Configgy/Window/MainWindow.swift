@@ -59,6 +59,8 @@ enum TimelineMetrics {
     static let rowHeight: CGFloat = 64
     static let laneHeight: CGFloat = 18
     static let laneInset: CGFloat = 16
+    /// Room at the left of every lane for the "older backups" marker; the plot starts after it.
+    static let edgeGutter: CGFloat = 72
 }
 
 struct MainView: View {
@@ -413,11 +415,12 @@ private struct TimelineAxis: View {
                 let now = Date()
                 ZStack(alignment: .topLeading) {
                     ForEach(TimelineGeometry.ticks(range: range, now: now), id: \.self) { date in
-                        let x = TimelineGeometry.x(for: date, now: now, range: range, width: geo.size.width)
+                        let g = TimelineMetrics.edgeGutter
+                        let x = g + TimelineGeometry.x(for: date, now: now, range: range, width: geo.size.width - g)
                         Text(label(date, now: now))
                             .textStyle(.caption).foregroundStyle(Palette.faint).monospacedDigit()
                             .fixedSize()
-                            .position(x: min(max(x, 18), geo.size.width - 18), y: 8)
+                            .position(x: min(max(x, TimelineMetrics.edgeGutter + 12), geo.size.width - 18), y: 8)
                     }
                 }
             }
@@ -556,38 +559,38 @@ private struct TimelineLane: View {
             let now = Date()
             let width = geo.size.width
             let mid = TimelineMetrics.laneHeight / 2
+            let g = TimelineMetrics.edgeGutter
             let points = visible(now: now, width: width)
             let earlier = snapshots.count - points.count
             ZStack(alignment: .topLeading) {
                 // Faint guides under each labelled day, so dots compare across rows.
                 ForEach(TimelineGeometry.ticks(range: range, now: now), id: \.self) { day in
-                    Rectangle().fill(Palette.hairline.opacity(0.35))
+                    Rectangle().fill(Palette.hairline.opacity(0.6))
                         .frame(width: 1, height: TimelineMetrics.laneHeight + 14)
-                        .offset(x: TimelineGeometry.x(for: day, now: now, range: range, width: width), y: -7)
+                        .offset(x: g + TimelineGeometry.x(for: day, now: now, range: range, width: width - g), y: -7)
                 }
                 // The lane, brighter toward now; dashed while there's nothing on it.
                 if snapshots.isEmpty {
-                    Path { p in p.move(to: CGPoint(x: 0, y: mid)); p.addLine(to: CGPoint(x: width, y: mid)) }
+                    Path { p in p.move(to: CGPoint(x: g, y: mid)); p.addLine(to: CGPoint(x: width, y: mid)) }
                         .stroke(Palette.hairline, style: StrokeStyle(lineWidth: 1, dash: [3, 4]))
                 } else {
-                    LinearGradient(colors: [Palette.hairline.opacity(0.25), Palette.hairline], startPoint: .leading, endPoint: .trailing)
-                        .frame(width: width, height: 1)
-                        .offset(y: mid)
+                    LinearGradient(colors: [Palette.hairline.opacity(0.5), Palette.hairline.opacity(1.6)], startPoint: .leading, endPoint: .trailing)
+                        .frame(width: width - g, height: 1)
+                        .offset(x: g, y: mid)
                 }
                 // Today.
                 Rectangle().fill(.accentGraphic.opacity(0.5)).frame(width: 1, height: TimelineMetrics.laneHeight)
                     .offset(x: width - 1)
                 if showsHost {
                     Text(isThisMac ? String(localized: "This Mac") : host)
-                        .font(.system(size: 9.5, weight: .medium)).foregroundStyle(Palette.faint)
+                        .font(.system(size: 10, weight: .medium)).foregroundStyle(Palette.faint)
                         .fixedSize()
-                        .offset(y: -9)
+                        .offset(x: g, y: -10)
                 }
-                if earlier > 0 {
-                    Text(verbatim: "← \(earlier)").textStyle(.caption).foregroundStyle(Palette.faint)
+                if let older = olderNewest(now: now, width: width), earlier > 0 {
+                    EdgeMarker(snapshot: older, count: earlier, isThisMac: isThisMac, focused: focused == older) { pick(older) }
                         .fixedSize()
-                        .offset(y: mid + 3)
-                        .help(String(localized: "\(earlier) earlier"))
+                        .position(x: g / 2 - 2, y: mid)
                 }
                 ForEach(points, id: \.snapshot.name) { point in
                     dot(for: point.snapshot)
@@ -602,7 +605,7 @@ private struct TimelineLane: View {
                     Image(systemName: "exclamationmark.circle.fill").font(.system(size: 11)).foregroundStyle(Palette.bad)
                         .position(x: width - 5, y: mid)
                 }
-                if let focused, let x = points.first(where: { $0.snapshot == focused })?.x {
+                if let focused, let x = points.first(where: { $0.snapshot == focused })?.x ?? (focused == olderNewest(now: now, width: width) ? g / 2 : nil) {
                     Callout(snapshot: focused)
                         .fixedSize()
                         .position(x: min(max(x, 100), width - 100), y: -14)
@@ -615,12 +618,17 @@ private struct TimelineLane: View {
             .contentShape(Rectangle())
             .onContinuousHover { phase in
                 switch phase {
-                case .active(let location): focused = nearest(points, to: location.x)
+                case .active(let location):
+                    focused = location.x < g && earlier > 0 ? olderNewest(now: now, width: width) : nearest(points, to: location.x)
                 case .ended: focused = nil
                 }
             }
             .gesture(DragGesture(minimumDistance: 0)
-                .onChanged { focused = nearest(points, to: $0.location.x, within: 40) }
+                .onChanged { value in
+                    focused = value.location.x < g && earlier > 0
+                        ? olderNewest(now: now, width: width)
+                        : nearest(points, to: value.location.x, within: 40)
+                }
                 .onEnded { _ in if let focused { pick(focused) } })
             .animation(.easeOut(duration: 0.12), value: focused)
         }
@@ -630,11 +638,17 @@ private struct TimelineLane: View {
         .accessibilityLabel(Text(isThisMac ? String(localized: "Backups on this Mac") : String(localized: "Backups on \(host)")))
     }
 
+    /// The newest backup older than the range, shown at the lane's left edge.
+    private func olderNewest(now: Date, width: CGFloat) -> Snapshot? {
+        snapshots.last { s in s.date.map { now.timeIntervalSince($0) > range.seconds } ?? true }
+    }
+
     private func visible(now: Date, width: CGFloat) -> [Point] {
         snapshots.compactMap { s in
             guard let date = s.date else { return nil }
-            let x = TimelineGeometry.x(for: date, now: now, range: range, width: width)
-            return x >= 0 ? Point(snapshot: s, x: min(x, width - 5)) : nil
+            let g = TimelineMetrics.edgeGutter
+            let x = TimelineGeometry.x(for: date, now: now, range: range, width: width - g)
+            return x >= 0 ? Point(snapshot: s, x: min(g + x, width - 5)) : nil
         }
     }
 
@@ -659,6 +673,35 @@ private struct TimelineLane: View {
         .accessibilityLabel(Text(Callout.describe(snapshot)))
         .accessibilityAddTraits(.isButton)
         .accessibilityAction { pick(snapshot) }
+    }
+}
+
+/// "‹ 9/30 · 3": backups older than the range, at the lane's left edge. Click restores the newest of them.
+private struct EdgeMarker: View {
+    let snapshot: Snapshot
+    let count: Int
+    let isThisMac: Bool
+    let focused: Bool
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 4) {
+                Image(systemName: "chevron.left").font(.system(size: 8, weight: .bold))
+                Text(label).font(.system(size: 10.5, weight: .medium)).monospacedDigit()
+            }
+            .foregroundStyle(focused ? AnyShapeStyle(.accentText) : AnyShapeStyle(Palette.muted))
+            .padding(.horizontal, 7).frame(height: 18)
+            .background(Palette.background, in: Capsule())
+            .overlay(Capsule().strokeBorder(focused ? AnyShapeStyle(.accentGraphic) : AnyShapeStyle(Palette.hairline.opacity(1.6))))
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(Text(String(localized: "\(count) earlier backups; newest \(Callout.describe(snapshot))")))
+    }
+
+    private var label: String {
+        let date = snapshot.date.map { $0.formatted(.dateTime.month(.defaultDigits).day()) } ?? "?"
+        return count > 1 ? "\(date) · \(count)" : date
     }
 }
 
