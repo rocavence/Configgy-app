@@ -47,6 +47,7 @@ final class MainWindow: NSObject, NSWindowDelegate {
 
     func snapshot() -> NSBitmapImageRep? { window.contentView?.snapshot() }
     func close() { window.close() }
+    var nsWindow: NSWindow { window }
 }
 
 struct MainView: View {

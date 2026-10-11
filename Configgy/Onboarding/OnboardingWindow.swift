@@ -215,4 +215,5 @@ final class OnboardingWindow: NSObject, NSWindowDelegate {
 
     func close() { window?.close() }
     func snapshot() -> NSBitmapImageRep? { window?.contentView?.snapshot() }
+    var nsWindow: NSWindow? { window }
 }

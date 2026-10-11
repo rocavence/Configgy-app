@@ -73,6 +73,7 @@ final class SettingsWindow: NSObject, NSWindowDelegate {
 
     func close() { window.close() }
     func snapshot() -> NSBitmapImageRep? { window.contentView?.snapshot() }
+    var nsWindow: NSWindow { window }
 }
 
 /// Flione's settings card: 900 × 600, 32 all round, a 184-wide column of

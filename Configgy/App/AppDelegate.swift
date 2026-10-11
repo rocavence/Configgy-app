@@ -16,7 +16,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         #if DEBUG
         if let item = ProcessInfo.processInfo.environment["CONFIGGY_SELFTEST"] {
-            SelfTest.run(item)
+            if item == "screenshots" { Screenshots.run() } else { SelfTest.run(item) }
             return
         }
         #endif

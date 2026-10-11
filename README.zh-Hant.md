@@ -12,7 +12,7 @@
 <p align="center"><a href="https://configgy.rocavence.com">configgy.rocavence.com</a> · <a href="README.md">English</a> · <b>繁體中文</b></p>
 
 <p align="center">
-  <img src="docs/readme-shots/zh-Hant-dark-main.png" width="720" alt="Configgy 主視窗：每個項目標示已保護、需要注意或失敗，並有備份與還原按鈕">
+  <img src="docs/readme-shots/zh-Hant-main-dark.png" width="720" alt="Configgy 主視窗：每個項目標示已保護、需要注意或失敗，並有備份與還原按鈕">
 </p>
 
 ## 安裝
@@ -47,8 +47,8 @@ brew install --cask rocavence/tap/configgy
 
 <table>
   <tr>
-    <td width="50%"><img src="docs/readme-shots/zh-Hant-dark-settings-exclusions.png" alt="設定 › 排除：一律不備份的檔案，以及每個項目實際複製的內容"></td>
-    <td width="50%"><img src="docs/readme-shots/zh-Hant-dark-onboarding.png" alt="第一次使用導覽：備份資料夾、要保護的項目、一律不備份的內容"></td>
+    <td width="50%"><img src="docs/readme-shots/zh-Hant-exclusions-dark.png" alt="設定 › 排除：一律不備份的檔案，以及每個項目實際複製的內容"></td>
+    <td width="50%"><img src="docs/readme-shots/zh-Hant-restore-light.png" alt="還原預覽：寫入前列出每個會被取代或新增的檔案"></td>
   </tr>
 </table>
 

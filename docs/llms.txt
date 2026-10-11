@@ -13,37 +13,30 @@
 
 ## What it does
 
-Configgy keeps painful-to-lose settings versioned, portable, and one click away. It runs as a menubar agent; everything you do lives in one window.
+Configgy keeps the settings you'd hate to lose versioned and restorable, in a cloud folder you already have. It runs in the menu bar (about 14 MB of memory); everything else is one window.
 
-| Target | Mechanism | Trigger |
+| Target | What's copied | When |
 |---|---|---|
-| Zen Browser | versioned .zip snapshots (keeps 10, deduped); each zip self-restores via an embedded restore.sh | automatic when you quit Zen |
-| Claude Code | versioned .zip snapshots of ~/.claude (plus ~/.agents/skills); restore reinstalls plugins | manual |
-| Custom / discovered targets | versioned, absolute-path-preserving .zip snapshots | manual |
+| Zen Browser | An allowlist: preferences, user.js, themes, shortcuts, workspaces and tabs, containers, search engines, chrome/ CSS, installed extensions. Each zip also self-restores via an embedded restore.sh | Each time you quit Zen, if anything changed |
+| Claude Code | An allowlist from ~/.claude: settings.json, CLAUDE.md, agents/, commands/, skills/, hooks/, output-styles/, plugin lists, each project's memory/; plus ~/.agents/skills | When you click Back Up |
+| Folders | Files and folders you pick, or suggested ones (shell, Git, SSH config, Zed, VS Code, terminals, Karabiner…) | When you click Back Up |
 
-Backups land in `…/Configgy/` inside a backup location you pick: Dropbox (default when found), iCloud Drive, Google Drive, or a custom folder. Filenames carry the host name so two Macs never collide.
-
-## The model
-
-A *target* is just "a set of paths, versioned as dated zips, with history, diff-preview, and additive restore". Zen and generic targets share that contract; Claude Code is the same shape plus a plugin-reinstall step. Zip snapshots beat a single rsync mirror because rollback comes for free.
-
-- Opt-in, not assumed: only Claude Code is enabled out of the box. Zen and everything else are suggestions you adopt. The app runs fine on a Mac without Zen.
-- Restores preview their diff and confirm first; overwritten files are backed up before being replaced. Picking an older snapshot is the rollback.
-- Re-adopt on open: Configgy scans the backup folder on launch, so targets backed up on another Mac reappear ready to restore.
-- Zen is careful: backing up Zen offers Cancel / Back up on quit / Back up now, and "Back up now" confirms again before quitting your browser.
+Backups go in `…/Configgy/` inside Dropbox, iCloud Drive, Google Drive, or any folder you choose. Each zip is named after the Mac it came from; Configgy keeps 10 per target per Mac (adjustable) and never deletes another Mac's backups.
 
 ## Secrets policy
 
-Passwords, cookies, browsing history, SSH private keys, and the token-bearing `gh hosts.yml` are never copied — those come back via your Mozilla account and Keychain. Discovery only suggests config that has no cloud sync of its own, and deliberately excludes secrets.
+Never backed up, for every target: .credentials.json, files named *token*, *credential* or *secret*, .env files, SSH/TLS keys, .netrc/.npmrc/.pypirc, browser cookies, saved passwords, form history, certificates, session and history dumps, .git, node_modules and virtual environments. Existing backups are scanned; ones that still hold such files can be cleaned (keeping the rest) or deleted. Restores never write them back.
+
+## Safety
+
+- Every zip is built and tested locally, then moved into the cloud folder under a temporary name, so a half-written backup never appears.
+- A missing or unwritable backup folder is reported, never silently replaced with a local one.
+- Restores show every file that will change first, save the current versions as a "before restore" copy (checked before anything is written), and only write inside the target's own paths. Paths are stored relative to the home folder.
+- Zen is never closed without asking. Every backup and restore is logged to ~/Library/Logs/Configgy/configgy.log.
 
 ## The window
 
-One window with a capsule tab switching two lists:
-
-- Protected (已備份保護): active targets. Each row shows the app icon, name, "last backup · N snapshots", and Back Up / Restore / Remove as compact pill buttons that tint on hover (green / orange / red).
-- Suggestions (建議加入): Zen, plus sync-less configs discovered on this Mac — shell dotfiles, git, ~/.ssh/config, Zed, VS Code, terminals, Karabiner, Hammerspoon, gh (without its token), and menubar utilities like MonitorControl / Moom / IINA. Tap Add to start versioning one.
-
-A gear → Settings page (in-window, with an ✕ to close) holds Theme (System / Light / Dark), Enlarge UI (1.1×), Launch at Login, Backup Location, and About. The menubar menu itself is just Open Configgy, About, Quit (plus an FDA warning when needed). Light and dark are both first-class, with an appearance-aware, Finder-like light palette.
+One sentence at the top says whether your settings are backed up and what to do if not, with a single button. Below it, each target is a line in plain words: when it was last backed up, how many backups you can restore, and from how many Macs. Restore lists backups by day, labelled with the Mac they came from, and previews the changes. Settings has General, Backup, Exclusions and About; a first-run guide picks the backup folder and what to protect. Six languages: 繁體中文, English, 日本語, 한국어, Español, Português.
 
 ## Install notes
 

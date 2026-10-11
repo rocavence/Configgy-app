@@ -194,6 +194,9 @@
   .win.light .row .who small{color:#71747c}
   .win.light .pill{border-color:rgba(0,0,0,.16);color:#4d5058}
   .win.light .pill.rm{color:#8b8e96}
+  .shot-win{background:none;border:0;box-shadow:none;overflow:visible;border-radius:0}
+  .shot-win img{display:block;width:100%;height:auto}
+  .shot-win .l{display:none}.shot-win.light .d{display:none}.shot-win.light .l{display:block}
   .demo-ctrl{display:flex;align-items:center;justify-content:center;gap:16px;margin-top:22px;flex-wrap:wrap}
   .toggle{display:inline-flex;align-items:center;gap:10px;font-weight:600;cursor:pointer;user-select:none;font-size:14px}
   .switch{width:50px;height:28px;border-radius:999px;background:rgba(255,255,255,.16);position:relative;transition:.25s;flex:none}
@@ -314,57 +317,13 @@
 
     <!-- INTERACTIVE DEMO -->
     <div class="demo-stage">
-      <div class="win" id="win">
-        <div class="titlebar"><i></i><i></i><i></i><span class="t">Configgy</span><span class="gear">⚙︎</span></div>
-        <div class="tabs">
-          <div class="capsule">
-            <button class="on" data-pane="prot" data-i="demo.tab1">已備份保護</button>
-            <button data-pane="sugg" data-i="demo.tab2">建議加入</button>
-          </div>
-        </div>
-        <div class="rows">
-          <div class="pane on" id="pane-prot">
-            <div class="row" data-row>
-              <span class="ico">✳︎</span>
-              <span class="who"><b>Claude Code</b><small data-i="demo.r1s">最後備份 今天 09:12 · 8 份快照</small></span>
-              <span class="acts">
-                <button class="pill go" data-backup data-i="demo.backup">備份</button>
-                <button class="pill re" data-i="demo.restore">還原</button>
-                <button class="pill rm" data-i="demo.remove">移除</button>
-              </span>
-              <span class="bar"></span>
-            </div>
-            <div class="row" data-row>
-              <span class="ico">🌀</span>
-              <span class="who"><b>Zen Browser</b><small data-i="demo.r2s">關閉 Zen 時自動備份 · 10 份快照</small></span>
-              <span class="acts">
-                <button class="pill go" data-backup data-i="demo.backup">備份</button>
-                <button class="pill re" data-i="demo.restore">還原</button>
-                <button class="pill rm" data-i="demo.remove">移除</button>
-              </span>
-              <span class="bar"></span>
-            </div>
-            <div class="row" data-row>
-              <span class="ico">🐚</span>
-              <span class="who"><b>Shell dotfiles</b><small data-i="demo.r3s">最後備份 昨天 23:40 · 3 份快照</small></span>
-              <span class="acts">
-                <button class="pill go" data-backup data-i="demo.backup">備份</button>
-                <button class="pill re" data-i="demo.restore">還原</button>
-                <button class="pill rm" data-i="demo.remove">移除</button>
-              </span>
-              <span class="bar"></span>
-            </div>
-          </div>
-          <div class="pane" id="pane-sugg">
-            <div class="row"><span class="ico">⌨︎</span><span class="who"><b>Karabiner-Elements</b><small data-i="demo.g1">改鍵設定 · 沒有自己的雲端同步</small></span><span class="acts"><button class="pill add" data-i="demo.add">加入</button></span></div>
-            <div class="row"><span class="ico">🔧</span><span class="who"><b>git · ~/.gitconfig</b><small data-i="demo.g2">全域 git 設定與 aliases</small></span><span class="acts"><button class="pill add" data-i="demo.add">加入</button></span></div>
-            <div class="row"><span class="ico">🖥️</span><span class="who"><b>~/.ssh/config</b><small data-i="demo.g3">只收設定檔，私鑰不碰</small></span><span class="acts"><button class="pill add" data-i="demo.add">加入</button></span></div>
-          </div>
-        </div>
+      <div class="win shot-win" id="win">
+        <img class="d" src="shots/main-dark.png" alt="Configgy 主視窗（深色）：最上面一句話告訴你設定都已備份，下面列出每個項目上次備份的時間" width="1600" height="1481">
+        <img class="l" src="shots/main-light.png" alt="Configgy 主視窗（淺色）" width="1600" height="1481" loading="lazy">
       </div>
       <div class="demo-ctrl">
         <label class="toggle" id="theme"><span class="switch"></span><span data-i="demo.theme">淺色模式</span></label>
-        <span class="demo-hint" data-i="demo.hint">← 撥一下切主題，或點「備份」看流光跑一輪</span>
+        <span class="demo-hint" data-i="demo.hint">← 撥一下看淺色模式</span>
       </div>
     </div>
   </div>
@@ -394,7 +353,7 @@
       <div class="card"><span class="emoji">✳︎</span><h3 data-i="feat.c2h">Claude Code 設定</h3><p data-i="feat.c2p">快照 <code>~/.claude</code> 與 <code>~/.agents/skills</code>；還原時連 plugins 一起重裝，新機器接得回原本的手感。</p></div>
       <div class="card"><span class="emoji">🔍</span><h3 data-i="feat.c3h">自動探索建議</h3><p data-i="feat.c3p">掃出這台 Mac 上沒有雲端同步的設定：shell、git、<code>~/.ssh/config</code>、Zed、VS Code、終端機、Karabiner、Hammerspoon…點加入就收編。</p></div>
       <div class="card"><span class="emoji">↩︎</span><h3 data-i="feat.c4h">預覽、回滾、再納入</h3><p data-i="feat.c4p">還原先看 diff；每個目標都有歷史可挑。開啟時掃一遍備份資料夾，另一台 Mac 備過的目標會自己回到清單上。</p></div>
-      <div class="card"><span class="emoji">🎛️</span><h3 data-i="feat.c5h">一個視窗就夠</h3><p data-i="feat.c5p">膠囊 tab 切兩份清單，動作就在列上；設定是視窗內的一頁，不是層層選單。淺色深色都是一等公民。</p></div>
+      <div class="card"><span class="emoji">🎛️</span><h3 data-i="feat.c5h">一眼看懂</h3><p data-i="feat.c5p">打開就有一句話告訴你設定有沒有備份好、要不要做什麼；每個項目寫出上次備份時間。支援六種語言，淺色深色都清楚。</p></div>
       <div class="card"><span class="emoji">⌨︎</span><h3 data-i="feat.c6h">同一顆 binary 就是 CLI</h3><p data-i="feat.c6p"><code>Configgy backup</code>、<code>list</code>、<code>restore</code>、<code>target-add</code>…全部跑得動，排程或遠端都行。</p></div>
     </div>
   </div>
@@ -406,19 +365,19 @@
     <h2 data-i="shot.h2">長這樣</h2>
     <div class="shots">
       <div class="shot">
-        <img src="shots/main-dark.png" alt="主視窗：每個項目標示已保護、需要注意或失敗，附上最後備份時間與來源 Mac，右側是備份與還原" loading="lazy" width="1520" height="1200">
+        <img src="shots/main-dark.png" alt="主視窗：最上面一句話說明設定是否都已備份，下面列出每個項目上次備份的時間與可還原的份數" loading="lazy" width="1600" height="1481">
         <p data-i="shot.c1"><b>一眼看出安不安全</b> — 最上面一句話告訴你設定有沒有備份好、要不要做什麼；每個項目寫出上次什麼時候備份、有幾份可以還原。</p>
       </div>
       <div class="shot">
-        <img src="shots/main-light.png" alt="淺色模式下的同一個視窗" loading="lazy" width="1520" height="1200">
-        <p data-i="shot.c4"><b>淺色模式</b> — 同一個視窗的淺色版本，跟著系統外觀切換。</p>
+        <img src="shots/restore-light.png" alt="還原預覽：列出會被取代與新增的每個檔案，確認後才還原" loading="lazy" width="1600" height="1569">
+        <p data-i="shot.c4"><b>還原前先看清楚</b> — 列出每個會被取代或新增的檔案，目前的版本會先另存一份，確認後才寫入。</p>
       </div>
       <div class="shot">
-        <img src="shots/exclusions-dark.png" alt="設定的排除頁：一律不備份的檔案，以及每個項目實際複製的內容" loading="lazy" width="1800" height="1200">
+        <img src="shots/exclusions-dark.png" alt="設定的排除頁：一律不備份的檔案，以及每個項目實際複製的內容" loading="lazy" width="1600" height="1092">
         <p data-i="shot.c2"><b>收什麼、不收什麼</b> — 設定裡列出一律不備份的祕密檔，以及每個項目實際複製的檔案，一目了然。</p>
       </div>
       <div class="shot">
-        <img src="shots/onboarding-dark.png" alt="第一次使用導覽：選備份資料夾、選要保護的項目" loading="lazy" width="1200" height="1120">
+        <img src="shots/onboarding-light.png" alt="第一次使用導覽：選備份資料夾、選要保護的項目" loading="lazy" width="1600" height="1501">
         <p data-i="shot.c3"><b>第一次使用</b> — 選好備份資料夾、勾選要保護的設定，一分鐘內開始。</p>
       </div>
     </div>
@@ -496,7 +455,7 @@ const I18N = {
     "demo.r2s":"關閉 Zen 時自動備份 · 10 份快照",
     "demo.r3s":"最後備份 昨天 23:40 · 3 份快照",
     "demo.g1":"改鍵設定 · 沒有自己的雲端同步","demo.g2":"全域 git 設定與 aliases","demo.g3":"只收設定檔，私鑰不碰",
-    "demo.theme":"淺色模式","demo.hint":"← 撥一下切主題，或點「備份」看流光跑一輪",
+    "demo.theme":"淺色模式","demo.hint":"← 撥一下看淺色模式",
     "how.eyebrow":"運作原理","how.h2":"一個目標，就是一組路徑",
     "how.lead":"Configgy 只有一個模型：把一組路徑存成帶日期的 zip、留著歷史、還原前先給你看 diff。Zen、Claude Code、你自己加的資料夾，走的都是同一條路。",
     "how.s1h":"選好目標","how.s1p":"預設只開 Claude Code。Zen 和其他都是「建議」，你點<b>加入</b>才開始版本化——這台沒裝 Zen 也照常跑。",
@@ -509,13 +468,13 @@ const I18N = {
     "feat.c2h":"Claude Code 設定","feat.c2p":'快照 <code>~/.claude</code> 與 <code>~/.agents/skills</code>；還原時連 plugins 一起重裝，新機器接得回原本的手感。',
     "feat.c3h":"自動探索建議","feat.c3p":'掃出這台 Mac 上沒有雲端同步的設定：shell、git、<code>~/.ssh/config</code>、Zed、VS Code、終端機、Karabiner、Hammerspoon…點加入就收編。',
     "feat.c4h":"預覽、回滾、再納入","feat.c4p":"還原先看 diff；每個目標都有歷史可挑。開啟時掃一遍備份資料夾，另一台 Mac 備過的目標會自己回到清單上。",
-    "feat.c5h":"一個視窗就夠","feat.c5p":"膠囊 tab 切兩份清單，動作就在列上；設定是視窗內的一頁，不是層層選單。淺色深色都是一等公民。",
+    "feat.c5h":"一眼看懂","feat.c5p":"打開就有一句話告訴你設定有沒有備份好、要不要做什麼；每個項目寫出上次備份時間。支援六種語言，淺色深色都清楚。",
     "feat.c6h":"同一顆 binary 就是 CLI","feat.c6p":'<code>Configgy backup</code>、<code>list</code>、<code>restore</code>、<code>target-add</code>…全部跑得動，排程或遠端都行。',
     "shot.eyebrow":"畫面","shot.h2":"長這樣",
     "shot.c1":'<b>一眼看出安不安全</b> — 最上面一句話告訴你設定有沒有備份好、要不要做什麼；每個項目寫出上次什麼時候備份、有幾份可以還原。',
     "shot.c2":'<b>收什麼、不收什麼</b> — 設定裡列出一律不備份的祕密檔，以及每個項目實際複製的檔案，一目了然。',
     "shot.c3":'<b>第一次使用</b> — 選好備份資料夾、勾選要保護的設定，一分鐘內開始。',
-    "shot.c4":'<b>淺色模式</b> — 同一個視窗的淺色版本，跟著系統外觀切換。',
+    "shot.c4":'<b>還原前先看清楚</b> — 列出每個會被取代或新增的檔案，目前的版本會先另存一份，確認後才寫入。',
     "inst.eyebrow":"安裝","inst.h2":"下載 zip，拖進「應用程式」",
     "inst.lead":"跟著四個步驟做，大約一分鐘。第三步會用到「終端機」，不用怕，複製貼上就好。","inst.s1":"按<a href=\"https://github.com/rocavence/Configgy-app/releases/latest\" target=\"_blank\" rel=\"noopener\" style=\"color:var(--ink);text-decoration:underline\">這裡的「下載最新版」</a>，從 GitHub 下載 <b>Configgy</b> 的 <b>.zip</b> 檔。","inst.s2":"到「下載項目」資料夾雙擊 zip 解壓縮，把 <b>Configgy</b> 拖進「應用程式」資料夾。","inst.s3":"打開「終端機」：按 <kbd>⌘</kbd> + <kbd>空白鍵</kbd> 叫出 Spotlight，輸入「<b>終端機</b>」（英文系統輸入 Terminal），按 <kbd>Return</kbd>。","inst.s4":"按下面黑色框右上角的「<b>複製</b>」，回到終端機按 <kbd>⌘</kbd> + <kbd>V</kbd> 貼上，再按 <kbd>Return</kbd>。Configgy 就會打開，之後從「應用程式」直接開就好。","inst.copy":"複製","inst.why":"<b>蛤？這是在幹嘛？</b>Configgy 是免費的自簽 app，沒有經過 Apple 公證。我也不是靠開發 App 維生，純粹是做自己覺得好用、好看的小東西，繳不起 Apple 每年的開發者規費⋯⋯所以 macOS 會擋下第一次開啟。這行指令只是拿掉下載時被加上的「隔離」標記，再幫你打開 Configgy，不會改動其他東西，只需要做一次。",
     "inst.cmt":"清除 quarantine 後直接打開","inst.btn":"下載最新版","inst.src":"自己 build",
@@ -537,7 +496,7 @@ const I18N = {
     "demo.r2s":"Backs up when you quit Zen · 10 snapshots",
     "demo.r3s":"Last backup yesterday 23:40 · 3 snapshots",
     "demo.g1":"Key remapping · no cloud sync of its own","demo.g2":"Global git settings and aliases","demo.g3":"The config file only — never the keys",
-    "demo.theme":"Light mode","demo.hint":"← Flip the theme, or hit Back Up to watch it run",
+    "demo.theme":"Light mode","demo.hint":"← Flip to see light mode",
     "how.eyebrow":"How it works","how.h2":"A target is just a set of paths",
     "how.lead":"Configgy has one model: take a set of paths, version them as dated zips, keep the history, and show you the diff before a restore. Zen, Claude Code, and folders you add all ride the same contract.",
     "how.s1h":"Pick your targets","how.s1p":"Only Claude is on out of the box. Zen and everything else are <b>suggestions</b> you adopt — the app runs fine on a Mac with no Zen at all.",
@@ -550,13 +509,13 @@ const I18N = {
     "feat.c2h":"Claude Code config","feat.c2p":'Snapshots <code>~/.claude</code> and <code>~/.agents/skills</code>; the restore reinstalls plugins, so a new Mac feels like the old one.',
     "feat.c3h":"Discovery suggestions","feat.c3p":'Finds config on this Mac with no cloud sync of its own — shell, git, <code>~/.ssh/config</code>, Zed, VS Code, terminals, Karabiner, Hammerspoon — and offers it up.',
     "feat.c4h":"Preview, roll back, re-adopt","feat.c4p":"Restores show their diff; every target keeps a history. On launch it scans the backup folder, so targets backed up on another Mac reappear ready to restore.",
-    "feat.c5h":"One window is enough","feat.c5p":"A capsule tab switches two lists, actions sit inline on the row, and settings is a page in the window rather than a deep menu. Light and dark are both first-class.",
+    "feat.c5h":"Clear at a glance","feat.c5p":"One sentence at the top says whether your settings are backed up and what to do if not; each item shows when it was last backed up. Six languages, and readable in light and dark.",
     "feat.c6h":"The binary is also the CLI","feat.c6p":'<code>Configgy backup</code>, <code>list</code>, <code>restore</code>, <code>target-add</code> — all headless, ready for cron or SSH.',
     "shot.eyebrow":"Screenshots","shot.h2":"What it looks like",
     "shot.c1":'<b>Safe at a glance</b> — each target says Protected, Needs Attention or Failed, and why; times read like "Today 00:15", with the Mac they came from.',
     "shot.c2":'<b>What goes in, what never does</b> — Settings lists the secret files that are never backed up, and exactly what each target copies.',
-    "shot.c3":'<b>First run</b> — pick the backup folder, tick what to protect, and you're set in a minute.',
-    "shot.c4":'<b>Light mode</b> — the same window in light, following the system appearance.',
+    "shot.c3":'<b>First run</b> — pick the backup folder, tick what to protect, and you\'re set in a minute.',
+    "shot.c4":'<b>See it before you restore</b> — every file that will be replaced or added is listed, and the current versions are saved first.',
     "inst.eyebrow":"Install","inst.h2":"Grab the zip, drag it to Applications",
     "inst.lead":"Four steps, about a minute. Step 3 uses Terminal — don't worry, it's just copy and paste.","inst.s1":"Click <a href=\"https://github.com/rocavence/Configgy-app/releases/latest\" target=\"_blank\" rel=\"noopener\" style=\"color:var(--ink);text-decoration:underline\"><b>Download latest</b></a> and download the <b>.zip</b> file from GitHub.","inst.s2":"Open your Downloads folder, double-click the zip to unzip it, and drag <b>Configgy</b> into the Applications folder.","inst.s3":"Open <b>Terminal</b>: press <kbd>⌘</kbd> + <kbd>Space</kbd> for Spotlight, type <b>Terminal</b>, and press <kbd>Return</kbd>.","inst.s4":"Click <b>Copy</b> at the top right of the black box below, go back to Terminal, press <kbd>⌘</kbd> + <kbd>V</kbd> to paste, then press <kbd>Return</kbd>. Configgy opens; after that, open it from Applications as usual.","inst.copy":"Copy","inst.why":"<b>Wait, what is this?</b> Configgy is a free, self-signed app that isn't notarized by Apple. I don't make apps for a living; I just build small things I find useful and good-looking, and Apple's yearly developer fee isn't in the budget… So macOS blocks the first launch. This line only removes the quarantine flag added when you downloaded it, then opens Configgy. It changes nothing else, and you only need to do it once.",
     "inst.cmt":"clear quarantine, then open","inst.btn":"Download latest","inst.src":"Build from source",

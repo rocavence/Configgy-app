@@ -12,7 +12,7 @@
 <p align="center"><a href="https://configgy.rocavence.com">configgy.rocavence.com</a> · <b>English</b> · <a href="README.zh-Hant.md">繁體中文</a></p>
 
 <p align="center">
-  <img src="docs/readme-shots/en-dark-main.png" width="720" alt="The Configgy window: each target shows Protected, Needs Attention or Failed, with Back Up and Restore">
+  <img src="docs/readme-shots/en-main-dark.png" width="720" alt="The Configgy window: each target shows Protected, Needs Attention or Failed, with Back Up and Restore">
 </p>
 
 ## Install
@@ -47,8 +47,8 @@ Each backup is a dated zip named after the Mac it came from. Configgy keeps 10 p
 
 <table>
   <tr>
-    <td width="50%"><img src="docs/readme-shots/en-light-settings-exclusions.png" alt="Settings › Exclusions: what's never backed up, and exactly what each target copies"></td>
-    <td width="50%"><img src="docs/readme-shots/en-dark-onboarding.png" alt="The first-run guide: backup folder, what to protect, and what's never backed up"></td>
+    <td width="50%"><img src="docs/readme-shots/en-exclusions-dark.png" alt="Settings › Exclusions: what's never backed up, and exactly what each target copies"></td>
+    <td width="50%"><img src="docs/readme-shots/en-restore-light.png" alt="Restore preview: every file that will be replaced or added, before anything is written"></td>
   </tr>
 </table>
 
