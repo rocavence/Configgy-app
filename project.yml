@@ -1,0 +1,72 @@
+name: Configgy
+options:
+  bundleIdPrefix: com.rocavence
+  developmentLanguage: en
+  deploymentTarget:
+    macOS: "14.0"
+  createIntermediateGroups: true
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    # 版本號只改這裡
+    MARKETING_VERSION: "1.0.0"
+    CURRENT_PROJECT_VERSION: "11"
+  configs:
+    Release:
+      DEAD_CODE_STRIPPING: YES
+      STRIP_INSTALLED_PRODUCT: YES
+      DEBUG_INFORMATION_FORMAT: dwarf-with-dsym
+schemes:
+  Configgy:
+    build:
+      targets:
+        Configgy: all
+        ConfiggyTests: [test]
+    test:
+      targets:
+        - ConfiggyTests
+targets:
+  Configgy:
+    type: application
+    platform: macOS
+    sources:
+      - Configgy
+    # 簽章設定在 Config/Signing.xcconfig；本機憑證放 Signing.local.xcconfig（不進版控）。
+    # 完整磁碟取用權綁在簽章身分上，正式版要用固定的自簽憑證，重建後才不用重新授權。
+    configFiles:
+      Debug: Config/Signing.xcconfig
+      Release: Config/Signing.xcconfig
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.rocavence.configgy
+        PRODUCT_NAME: Configgy
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_CFBundleDisplayName: Configgy
+        INFOPLIST_KEY_LSUIElement: YES
+        INFOPLIST_KEY_LSApplicationCategoryType: public.app-category.utilities
+        INFOPLIST_KEY_NSHumanReadableCopyright: ""
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        SWIFT_EMIT_LOC_STRINGS: YES
+        LOCALIZATION_PREFERS_STRING_CATALOGS: YES
+      configs:
+        # 除錯版用自己的 bundle ID，自我測試不會動到正式版
+        Debug:
+          PRODUCT_BUNDLE_IDENTIFIER: com.rocavence.configgy.debug
+        # 自簽憑證沒有 Team ID，除錯版開 hardened runtime 會載不進 debug dylib
+        Release:
+          ENABLE_HARDENED_RUNTIME: YES
+  ConfiggyTests:
+    type: bundle.unit-test
+    platform: macOS
+    sources:
+      - ConfiggyTests
+    dependencies:
+      - target: Configgy
+    configFiles:
+      Debug: Config/Signing.xcconfig
+      Release: Config/Signing.xcconfig
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+        BUNDLE_LOADER: $(TEST_HOST)
+        TEST_HOST: $(BUILT_PRODUCTS_DIR)/Configgy.app/Contents/MacOS/Configgy

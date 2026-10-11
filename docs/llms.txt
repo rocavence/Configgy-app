@@ -6,6 +6,7 @@
 - Price: Free, open source (CC BY-NC-SA 4.0)
 - Author: rocavence (https://github.com/rocavence)
 - Download: https://github.com/rocavence/Configgy-app/releases/latest
+- Homebrew: `brew install --cask rocavence/tap/configgy` (removes the quarantine flag; update with `brew upgrade`)
 - Source code: https://github.com/rocavence/Configgy-app
 - Website: https://configgy.rocavence.com
 - Current version: 0.3.1
@@ -46,7 +47,8 @@ A gear → Settings page (in-window, with an ✕ to close) holds Theme (System /
 
 ## Install notes
 
-- Download the .dmg from https://github.com/rocavence/Configgy-app/releases and drag Configgy to Applications.
+- Download the .zip from https://github.com/rocavence/Configgy-app/releases, unzip it, and drag Configgy to Applications; or `brew install --cask rocavence/tap/configgy`.
+- Never backed up: logins, passwords, cookies, keys, tokens, .env files, browsing history and sessions; every target copies an explicit allowlist.
 - Self-signed (not Apple-notarized). On first launch, open via right-click → Open, or run `xattr -dr com.apple.quarantine /Applications/Configgy.app`.
 - Full Disk Access is required so it can read protected config folders and write to your cloud backup folder. macOS never prompts for this automatically, so the app guides you on first launch.
 - Pick a backup location: Dropbox by default; otherwise Dropbox / iCloud Drive / Google Drive / a custom folder.

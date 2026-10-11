@@ -1,11 +1,13 @@
 .DS_Store
 /.build
 /build
-/Packages
-.swiftpm/
-DerivedData/
+/dist
+/.cache
 xcuserdata/
-dist/
+DerivedData/
+.swiftpm/
+*.xcodeproj/
+Config/Signing.local.xcconfig
 
 # 本機工作筆記（非對外文件）
 HANDOFF.md
