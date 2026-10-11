@@ -191,7 +191,7 @@ enum SelfTest {
         let rows = Dictionary(uniqueKeysWithValues: model.rows.map { ($0.key, $0) })
         check("Claude is protected", rows["claude"]?.health == .protected)
         check("Zen failed, with the reason", rows["zen"]?.health == .failed && rows["zen"]?.reason == "zip exited with 12")
-        check("the missing folder target needs attention", rows["t:notes"]?.health == .attention)
+        check("a target with nothing on this Mac reads unavailable", rows["t:notes"]?.health == .unavailable)
         check("suggestions list what's on this Mac", model.suggestions.contains { $0.def.id == "git" })
     }
 
@@ -210,11 +210,6 @@ enum SelfTest {
         let mainShot = main.snapshot()
         check("the main window renders", mainShot != nil)
         save(mainShot, shots, "main")
-        // A week: older backups must still show, at each lane's left edge.
-        UserDefaults.standard.set(7, forKey: "Configgy.timelineRange")
-        try await Task.sleep(for: .milliseconds(500))
-        save(main.snapshot(), shots, "main-week")
-        UserDefaults.standard.set(30, forKey: "Configgy.timelineRange")
         main.close()
 
         let settings = SettingsWindow(model: model)

@@ -2,7 +2,8 @@ import AppKit
 
 /// One row of the main window.
 struct TargetRow: Identifiable, Sendable, Equatable {
-    enum Health: Sendable, Equatable { case protected, attention, failed }
+    /// `unavailable`: nothing of it is on this Mac, so there's nothing to back up here.
+    enum Health: Sendable, Equatable { case protected, attention, failed, unavailable }
 
     let key: String
     let name: String
@@ -58,7 +59,7 @@ final class AppModel {
 
     var zenInstalled: Bool { ZenTarget.detectProfile(home: context.home) != nil }
 
-    var needsAttention: Int { rows.filter { $0.health != .protected }.count + (location == .ok ? 0 : 1) }
+    var needsAttention: Int { rows.filter { $0.health == .attention || $0.health == .failed }.count + (location == .ok ? 0 : 1) }
 
     // MARK: Settings
 
@@ -145,7 +146,7 @@ final class AppModel {
             health = .attention
             reason = String(localized: "\(secrets) older backups contain secret files.")
         } else if let missing = missingReason(target, context: context) {
-            health = .attention
+            health = .unavailable
             reason = missing
         } else if let last = mine.last?.date ?? (mine.isEmpty ? nil : Date.distantPast) {
             let days = Calendar.current.dateComponents([.day], from: last, to: Date()).day ?? 0
@@ -323,12 +324,5 @@ final class AppModel {
         if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_AllFilesAccess") {
             NSWorkspace.shared.open(url)
         }
-    }
-}
-
-private extension String {
-    /// "Backed up today 00:15" reads better than "Backed up Today 00:15" in English.
-    var lowercasedIfEnglish: String {
-        Locale.current.language.languageCode?.identifier == "en" ? prefix(1).lowercased() + dropFirst() : self
     }
 }

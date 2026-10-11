@@ -81,42 +81,82 @@
         }
       }
     },
-    "%@ (this Mac)": {
+    "%@ didn't back up": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "%@ (this Mac)"
+            "value": "%@ didn't back up"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "%@（這台 Mac）"
+            "value": "%@ 備份失敗"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "%@（このMac）"
+            "value": "%@ のバックアップに失敗しました"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "%@ (이 Mac)"
+            "value": "%@ 백업 실패"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "%@ (este Mac)"
+            "value": "%@ no se pudo copiar"
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "%@ (este Mac)"
+            "value": "O backup de %@ falhou"
+          }
+        }
+      }
+    },
+    "%@ is missing. Check that the cloud app is running, or choose another folder.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ is missing. Check that the cloud app is running, or choose another folder."
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "找不到 %@。請確認雲端 App 有在執行，或改選其他資料夾。"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ が見つかりません。クラウドアプリが起動しているか確認するか、別のフォルダを選んでください。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@을(를) 찾을 수 없습니다. 클라우드 앱이 실행 중인지 확인하거나 다른 폴더를 고르세요."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se encuentra %@. Comprueba que la app de nube esté abierta o elige otra carpeta."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ não foi encontrado. Verifique se o app de nuvem está aberto ou escolha outra pasta."
           }
         }
       }
@@ -157,6 +197,46 @@
           "stringUnit": {
             "state": "translated",
             "value": "%@ ainda está aberto. Encerre-o primeiro."
+          }
+        }
+      }
+    },
+    "%@ isn't backed up": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ isn't backed up"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ 還沒備份好"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ はまだバックアップされていません"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ 아직 백업 안 됨"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ no tiene copia al día"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ ainda não tem backup"
           }
         }
       }
@@ -241,46 +321,6 @@
         }
       }
     },
-    "%@, %@, %@": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%@, %@, %@"
-          }
-        },
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%1$@, %2$@, %3$@"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%1$@, %2$@, %3$@"
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%1$@, %2$@, %3$@"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%1$@, %2$@, %3$@"
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%1$@, %2$@, %3$@"
-          }
-        }
-      }
-    },
     "%lld": {
       "localizations": {
         "en": {
@@ -321,82 +361,162 @@
         }
       }
     },
-    "%lld backups in the folder contain secret files (logins, keys or tokens) from before Configgy filtered them.": {
+    "%lld backups failed": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "%lld backups in the folder contain secret files (logins, keys or tokens) from before Configgy filtered them."
+            "value": "%lld backups failed"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "資料夾裡有 %lld 份備份含有祕密檔（登入資料、金鑰或 token），是 Configgy 開始過濾前留下的。"
+            "value": "%lld 項備份失敗"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "フォルダ内の %lld 個のバックアップに、Configgy が除外を始める前の秘密ファイル（ログイン情報、鍵、トークン）が含まれています。"
+            "value": "%lld 件のバックアップに失敗"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "폴더의 백업 %lld개에 Configgy가 걸러내기 전에 들어간 비밀 파일(로그인 정보, 키, 토큰)이 있습니다."
+            "value": "백업 %lld개 실패"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "%lld copias de la carpeta contienen archivos secretos (inicios de sesión, claves o tokens) de antes de que Configgy los filtrara."
+            "value": "%lld copias fallaron"
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "%lld backups da pasta contêm arquivos secretos (logins, chaves ou tokens) de antes de o Configgy filtrá-los."
+            "value": "%lld backups falharam"
           }
         }
       }
     },
-    "%lld days": {
+    "%lld backups from before 1.0 include logins or keys. Remove those files to keep the rest.": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "%lld days"
+            "value": "%lld backups from before 1.0 include logins or keys. Remove those files to keep the rest."
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "%lld 天"
+            "value": "有 %lld 份 1.0 以前的備份含有登入資料或金鑰。移除這些檔案，其他內容都會保留。"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "%lld日"
+            "value": "1.0 より前のバックアップ %lld 個にログイン情報や鍵が含まれています。それらを削除すれば残りは保てます。"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "%lld일"
+            "value": "1.0 이전 백업 %lld개에 로그인 정보나 키가 있습니다. 그 파일만 지우면 나머지는 유지됩니다."
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "%lld días"
+            "value": "%lld copias anteriores a la 1.0 incluyen inicios de sesión o claves. Quita esos archivos y conserva el resto."
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "%lld dias"
+            "value": "%lld backups anteriores à 1.0 incluem logins ou chaves. Remova esses arquivos e mantenha o resto."
+          }
+        }
+      }
+    },
+    "%lld backups you can restore": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld backups you can restore"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "有 %lld 份可以還原"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "復元できるバックアップ %lld 個"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "복원할 수 있는 백업 %lld개"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld copias para restaurar"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld backups para restaurar"
+          }
+        }
+      }
+    },
+    "%lld backups you can restore, from %lld Macs": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld backups you can restore, from %lld Macs"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "有 %1$lld 份可以還原，來自 %2$lld 台 Mac"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "復元できるバックアップ %1$lld 個（%2$lld 台のMacから）"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "복원할 수 있는 백업 %1$lld개, Mac %2$lld대에서"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$lld copias para restaurar, de %2$lld Mac"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$lld backups para restaurar, de %2$lld Macs"
           }
         }
       }
@@ -437,46 +557,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "há %lld dias"
-          }
-        }
-      }
-    },
-    "%lld earlier backups; newest %@": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%lld earlier backups; newest %@"
-          }
-        },
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "更早還有 %1$lld 份備份，最新的是 %2$@"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "それ以前のバックアップ %1$lld 個。最新は %2$@"
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "이전 백업 %1$lld개, 가장 최근은 %2$@"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%1$lld copias anteriores; la más reciente: %2$@"
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%1$lld backups anteriores; o mais recente: %2$@"
           }
         }
       }
@@ -597,6 +677,46 @@
           "stringUnit": {
             "state": "translated",
             "value": "%1$lld arquivos serão substituídos e %2$lld adicionados. O Configgy salva as versões atuais primeiro."
+          }
+        }
+      }
+    },
+    "%lld items aren't backed up": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld items aren't backed up"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "有 %lld 項還沒備份好"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld 項目がまだバックアップされていません"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld개 항목이 아직 백업 안 됨"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld elementos no tienen copia al día"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld itens ainda não têm backup"
           }
         }
       }
@@ -1001,6 +1121,46 @@
         }
       }
     },
+    "Add the apps whose settings you'd hate to lose.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Add the apps whose settings you'd hate to lose."
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "把你不想弄丟設定的 App 加進來。"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "なくしたくない設定のアプリを追加しましょう。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "잃고 싶지 않은 설정의 앱을 추가하세요."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Añade las apps cuyos ajustes no quieres perder."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Adicione os apps cujos ajustes você não quer perder."
+          }
+        }
+      }
+    },
     "Allow access to that folder": {
       "localizations": {
         "en": {
@@ -1401,6 +1561,46 @@
         }
       }
     },
+    "Back Up Now": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Back Up Now"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "立即備份"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "今すぐバックアップ"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "지금 백업"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Copiar ahora"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fazer backup agora"
+          }
+        }
+      }
+    },
     "Back Up Zen Automatically": {
       "localizations": {
         "en": {
@@ -1452,7 +1652,7 @@
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "已備份：%@。"
+            "value": "上次備份：%@"
           }
         },
         "ja": {
@@ -1637,86 +1837,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Pasta de backup não encontrada"
-          }
-        }
-      }
-    },
-    "Backups on %@": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Backups on %@"
-          }
-        },
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%@ 的備份"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%@ のバックアップ"
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%@의 백업"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Copias de %@"
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Backups de %@"
-          }
-        }
-      }
-    },
-    "Backups on this Mac": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Backups on this Mac"
-          }
-        },
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "這台 Mac 的備份"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "このMacのバックアップ"
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "이 Mac의 백업"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Copias de este Mac"
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Backups deste Mac"
           }
         }
       }
@@ -2361,46 +2481,6 @@
         }
       }
     },
-    "Choose where to keep backups.": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Choose where to keep backups."
-          }
-        },
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "選擇備份要存在哪裡。"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "バックアップの保存先を選んでください。"
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "백업을 보관할 곳을 고르세요."
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Elige dónde guardar las copias."
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Escolha onde guardar os backups."
-          }
-        }
-      }
-    },
     "Choose…": {
       "localizations": {
         "en": {
@@ -2681,6 +2761,46 @@
         }
       }
     },
+    "Configgy can't save backups yet": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Configgy can't save backups yet"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Configgy 還不能儲存備份"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Configgy はまだバックアップを保存できません"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Configgy가 아직 백업을 저장할 수 없습니다"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Configgy aún no puede guardar copias"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O Configgy ainda não pode salvar backups"
+          }
+        }
+      }
+    },
     "Configgy is up to date.": {
       "localizations": {
         "en": {
@@ -2757,46 +2877,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "O Configgy guarda versões desses ajustes em uma pasta de nuvem que você já tem, nunca seus logins ou chaves, e os devolve a qualquer um dos seus Macs mostrando antes o que vai mudar."
-          }
-        }
-      }
-    },
-    "Configgy needs Full Disk Access to write to the backup folder. Add Configgy in the list that opens, then quit and reopen it.": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Configgy needs Full Disk Access to write to the backup folder. Add Configgy in the list that opens, then quit and reopen it."
-          }
-        },
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Configgy 需要完整磁碟取用權才能寫入備份資料夾。請在打開的清單裡加入 Configgy，再結束並重新打開它。"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "バックアップフォルダに書き込むには、フルディスクアクセスが必要です。開いたリストに Configgy を追加し、終了してから開き直してください。"
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "백업 폴더에 쓰려면 전체 디스크 접근 권한이 필요합니다. 열리는 목록에 Configgy를 추가한 뒤 종료하고 다시 여세요."
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Configgy necesita Acceso total al disco para escribir en la carpeta de copias. Añádelo en la lista que se abre, luego ciérralo y vuelve a abrirlo."
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "O Configgy precisa de Acesso Total ao Disco para gravar na pasta de backup. Adicione-o na lista que abrir, depois encerre e reabra."
           }
         }
       }
@@ -3401,46 +3481,6 @@
         }
       }
     },
-    "Everything is protected": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Everything is protected"
-          }
-        },
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "全部受到保護"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "すべて保護されています"
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "모두 보호됨"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Todo está protegido"
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Tudo está protegido"
-          }
-        }
-      }
-    },
     "Exclusions": {
       "localizations": {
         "en": {
@@ -3961,46 +4001,6 @@
         }
       }
     },
-    "Hover a dot to see a backup; click or drag along a line to restore one.": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Hover a dot to see a backup; click or drag along a line to restore one."
-          }
-        },
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "把滑鼠移到圓點上看備份內容；點一下或沿著時間軸拖曳，就能還原那一份。"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "点にポインタを合わせるとバックアップを確認できます。クリックするか線に沿ってドラッグすると、そのバックアップを復元できます。"
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "점에 포인터를 올리면 백업을 볼 수 있습니다. 클릭하거나 선을 따라 드래그하면 그 백업을 복원합니다."
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Pasa el puntero por un punto para ver una copia; haz clic o arrastra por la línea para restaurarla."
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Passe o ponteiro sobre um ponto para ver um backup; clique ou arraste pela linha para restaurá-lo."
-          }
-        }
-      }
-    },
     "Iris Purple": {
       "localizations": {
         "en": {
@@ -4037,6 +4037,46 @@
           "stringUnit": {
             "state": "translated",
             "value": "Roxo íris"
+          }
+        }
+      }
+    },
+    "It needs Full Disk Access. Add Configgy in the list that opens, then quit and reopen it.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "It needs Full Disk Access. Add Configgy in the list that opens, then quit and reopen it."
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "需要完整磁碟取用權。請在打開的清單裡加入 Configgy，再結束並重新打開它。"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "フルディスクアクセスが必要です。開いたリストに Configgy を追加し、終了してから開き直してください。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "전체 디스크 접근 권한이 필요합니다. 열리는 목록에 Configgy를 추가한 뒤 종료하고 다시 여세요."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Necesita Acceso total al disco. Añade Configgy en la lista que se abre, luego ciérralo y vuelve a abrirlo."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Precisa de Acesso Total ao Disco. Adicione o Configgy na lista que abrir, depois encerre e reabra."
           }
         }
       }
@@ -4157,6 +4197,46 @@
           "stringUnit": {
             "state": "translated",
             "value": "O último backup neste Mac foi há %lld dias."
+          }
+        }
+      }
+    },
+    "Last backup %@, in %@.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Last backup %@, in %@."
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "最近一次備份：%1$@，存在 %2$@。"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "最後のバックアップ：%1$@（%2$@）。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "마지막 백업: %1$@, %2$@에 저장."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Última copia: %1$@, en %2$@."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Último backup: %1$@, no %2$@."
           }
         }
       }
@@ -5081,52 +5161,92 @@
         }
       }
     },
-    "Nothing is backed up yet. Add something below.": {
+    "Not on This Mac": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Nothing is backed up yet. Add something below."
+            "value": "Not on This Mac"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "還沒有任何備份，從下面加一個吧。"
+            "value": "這台 Mac 沒有"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "まだ何もバックアップしていません。下から追加してください。"
+            "value": "このMacにはありません"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "아직 백업한 것이 없습니다. 아래에서 추가하세요."
+            "value": "이 Mac에 없음"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Aún no hay nada copiado. Añade algo abajo."
+            "value": "No está en este Mac"
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Ainda não há nada com backup. Adicione algo abaixo."
+            "value": "Não está neste Mac"
           }
         }
       }
     },
-    "Nothing protected yet": {
+    "Nothing is backed up until Configgy has a folder to put backups in.": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Nothing protected yet"
+            "value": "Nothing is backed up until Configgy has a folder to put backups in."
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "選好備份資料夾之前，什麼都不會備份。"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "保存先フォルダを選ぶまで、何もバックアップされません。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "백업 폴더를 고르기 전에는 아무것도 백업되지 않습니다."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se copia nada hasta que Configgy tenga una carpeta donde guardar."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nada terá backup até o Configgy ter uma pasta para guardar."
+          }
+        }
+      }
+    },
+    "Nothing is protected yet": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nothing is protected yet"
           }
         },
         "zh-Hant": {
@@ -5144,7 +5264,7 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "아직 보호 중인 것이 없음"
+            "value": "아직 보호 중인 것이 없습니다"
           }
         },
         "es": {
@@ -6681,42 +6801,42 @@
         }
       }
     },
-    "Something failed": {
+    "Some old backups hold secret files": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Something failed"
+            "value": "Some old backups hold secret files"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "有項目失敗了"
+            "value": "有些舊備份含有祕密檔"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "失敗した項目があります"
+            "value": "古いバックアップに秘密ファイルがあります"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "실패한 항목이 있음"
+            "value": "일부 이전 백업에 비밀 파일이 있습니다"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Algo falló"
+            "value": "Algunas copias antiguas tienen archivos secretos"
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Algo falhou"
+            "value": "Alguns backups antigos têm arquivos secretos"
           }
         }
       }
@@ -7041,6 +7161,46 @@
         }
       }
     },
+    "The backup folder isn't available": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The backup folder isn't available"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "備份資料夾無法使用"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "バックアップフォルダを使えません"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "백업 폴더를 쓸 수 없습니다"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La carpeta de copias no está disponible"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A pasta de backup não está disponível"
+          }
+        }
+      }
+    },
     "The backup folder isn't available: %@. Check that the cloud app is running, or choose another folder.": {
       "localizations": {
         "en": {
@@ -7077,46 +7237,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "A pasta de backup não está disponível: %@. Verifique se o app de nuvem está aberto ou escolha outra pasta."
-          }
-        }
-      }
-    },
-    "The backup folder isn't there: %@. Nothing is backed up until it's back or you choose another.": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "The backup folder isn't there: %@. Nothing is backed up until it's back or you choose another."
-          }
-        },
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "備份資料夾不見了：%@。在它回來或你改選其他資料夾之前，什麼都不會備份。"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "バックアップフォルダがありません：%@。戻るか別のフォルダを選ぶまで、何もバックアップされません。"
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "백업 폴더가 없습니다: %@. 다시 생기거나 다른 폴더를 고를 때까지 아무것도 백업되지 않습니다."
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "La carpeta de copias no está: %@. No se copia nada hasta que vuelva o elijas otra."
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "A pasta de backup não está lá: %@. Nada terá backup até ela voltar ou você escolher outra."
           }
         }
       }
@@ -7521,46 +7641,6 @@
         }
       }
     },
-    "Timeline range": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Timeline range"
-          }
-        },
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "時間軸範圍"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "タイムラインの範囲"
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "타임라인 범위"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Rango de la línea de tiempo"
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Intervalo da linha do tempo"
-          }
-        }
-      }
-    },
     "Today": {
       "localizations": {
         "en": {
@@ -7637,6 +7717,46 @@
           "stringUnit": {
             "state": "translated",
             "value": "Hoje %@"
+          }
+        }
+      }
+    },
+    "Try Again": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Try Again"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "再試一次"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "再試行"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "다시 시도"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reintentar"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tentar de novo"
           }
         }
       }
@@ -7921,6 +8041,46 @@
         }
       }
     },
+    "Yesterday": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yesterday"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "昨天"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "昨日"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "어제"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ayer"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ontem"
+          }
+        }
+      }
+    },
     "Yesterday %@": {
       "localizations": {
         "en": {
@@ -8041,6 +8201,46 @@
         }
       }
     },
+    "Your settings are backed up": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your settings are backed up"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "你的設定都已備份"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "設定はすべてバックアップ済みです"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "설정이 모두 백업되었습니다"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tus ajustes están copiados"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Seus ajustes têm backup"
+          }
+        }
+      }
+    },
     "Zen Browser": {
       "localizations": {
         "en": {
@@ -8077,86 +8277,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Zen Browser"
-          }
-        }
-      }
-    },
-    "Zen automatic backup is off": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Zen automatic backup is off"
-          }
-        },
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Zen 自動備份已關閉"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Zen の自動バックアップはオフ"
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Zen 자동 백업 꺼짐"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Copia automática de Zen desactivada"
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Backup automático do Zen desligado"
-          }
-        }
-      }
-    },
-    "Zen backs up when you quit it": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Zen backs up when you quit it"
-          }
-        },
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "結束 Zen 時自動備份"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Zen は終了時に自動でバックアップ"
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Zen은 종료할 때 백업"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Zen se copia al cerrarlo"
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "O Zen tem backup ao ser encerrado"
           }
         }
       }

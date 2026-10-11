@@ -89,9 +89,9 @@ struct RestoreSheet: View {
         case .choose:
             Text("Which backup?").textStyle(.subheading).foregroundStyle(Palette.ink)
             List(selection: $selected) {
-                ForEach(hosts, id: \.self) { host in
-                    Section(host == model.context.host ? String(localized: "\(host) (this Mac)") : host) {
-                        ForEach(snapshots.filter { $0.host == host }) { snapshot in
+                ForEach(days, id: \.self) { day in
+                    Section(dayTitle(day)) {
+                        ForEach(snapshots.filter { $0.date.map { Calendar.current.startOfDay(for: $0) } == day }) { snapshot in
                             snapshotRow(snapshot).tag(Optional(snapshot))
                         }
                     }
@@ -190,20 +190,36 @@ struct RestoreSheet: View {
         }
     }
 
-    private var hosts: [String] {
-        var seen: [String] = []
-        for s in snapshots where !seen.contains(s.host) { seen.append(s.host) }
+    /// Days that have backups, newest first.
+    private var days: [Date] {
+        var seen: [Date] = []
+        for s in snapshots {
+            guard let date = s.date else { continue }
+            let day = Calendar.current.startOfDay(for: date)
+            if !seen.contains(day) { seen.append(day) }
+        }
         return seen
     }
 
+    private func dayTitle(_ day: Date) -> String {
+        if Calendar.current.isDateInToday(day) { return String(localized: "Today") }
+        if Calendar.current.isDateInYesterday(day) { return String(localized: "Yesterday") }
+        return day.formatted(date: .complete, time: .omitted)
+    }
+
     private func snapshotRow(_ snapshot: Snapshot) -> some View {
-        HStack {
-            Text(snapshot.date.map { RelativeTime.describe($0) } ?? snapshot.name).textStyle(.body)
-            Spacer()
-            if let files = snapshot.meta?.files { Text("\(files) files").textStyle(.caption).foregroundStyle(Palette.muted) }
+        HStack(spacing: Spacing.s12) {
+            Text(snapshot.date.map { $0.formatted(date: .omitted, time: .shortened) } ?? snapshot.name)
+                .textStyle(.bodyEmphasis).monospacedDigit().frame(minWidth: 70, alignment: .leading)
+            Text(snapshot.host == model.context.host ? String(localized: "This Mac") : snapshot.host)
+                .textStyle(.caption).foregroundStyle(Palette.muted)
+                .padding(.horizontal, 7).padding(.vertical, 2)
+                .background(Palette.hover, in: Capsule())
             if let workspaces = snapshot.meta?.summary?.workspaces, !workspaces.isEmpty {
                 Text(workspaces.prefix(3).joined(separator: " · ")).textStyle(.caption).foregroundStyle(Palette.muted).lineLimit(1)
             }
+            Spacer()
+            if let files = snapshot.meta?.files { Text("\(files) files").textStyle(.caption).foregroundStyle(Palette.muted) }
         }
         .help(snapshot.date.map { RelativeTime.full($0) } ?? snapshot.name)
     }

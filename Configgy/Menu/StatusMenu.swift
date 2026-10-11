@@ -63,7 +63,7 @@ final class StatusMenu: NSObject, NSMenuDelegate {
         case .notWritable: return String(localized: "Needs Full Disk Access")
         case .ok: break
         }
-        let n = model.rows.filter { $0.health != .protected }.count
+        let n = model.rows.filter { $0.health == .attention || $0.health == .failed }.count
         return n == 0 ? String(localized: "Everything is backed up") : String(localized: "\(n) need attention")
     }
 
