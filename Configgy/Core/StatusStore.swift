@@ -17,6 +17,8 @@ struct StatusFile: Codable, Sendable {
     var zenDismissed: String?
     /// Snapshot names already checked for secrets and found clean.
     var scanned: [String] = []
+    /// Snapshots checked and found to hold secret files, with those files, so they aren't re-read each launch.
+    var flagged: [String: [String]] = [:]
 
     static func path(_ home: String) -> String { home + "/Library/Application Support/Configgy/status.json" }
 

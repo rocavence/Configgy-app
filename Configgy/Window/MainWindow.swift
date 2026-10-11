@@ -7,6 +7,7 @@ final class MainWindow: NSObject, NSWindowDelegate {
     var openSettings: () -> Void = {} {
         didSet { host.rootView = MainView(model: model, openSettings: openSettings) }
     }
+    var onClose: () -> Void = {}
     private let model: AppModel
     private let host: NSHostingView<MainView>
 
@@ -37,6 +38,11 @@ final class MainWindow: NSObject, NSWindowDelegate {
 
     func windowWillClose(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
+        // Let the close finish, then drop the view tree.
+        DispatchQueue.main.async { [weak self] in
+            self?.window.contentView = nil
+            self?.onClose()
+        }
     }
 
     func snapshot() -> NSBitmapImageRep? { window.contentView?.snapshot() }
@@ -630,10 +636,30 @@ enum AppIcons {
         if let cached = cache[key] { return cached }
         let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: key)
             ?? NSWorkspace.shared.urlForApplication(withBundleIdentifier: "com.apple.Terminal")
-        let image = url.map { NSWorkspace.shared.icon(forFile: $0.path) } ?? NSWorkspace.shared.icon(for: .application)
-        cache[key] = image
-        return image
+        let full = url.map { NSWorkspace.shared.icon(forFile: $0.path) } ?? NSWorkspace.shared.icon(for: .application)
+        // Keep one small bitmap, not the icon's full set of representations up to 1024 px.
+        let small = NSImage(size: NSSize(width: 64, height: 64), flipped: false) { rect in
+            full.draw(in: rect)
+            return true
+        }
+        let rep = NSBitmapImageRep(bitmapDataPlanes: nil, pixelsWide: 128, pixelsHigh: 128, bitsPerSample: 8, samplesPerPixel: 4,
+                                   hasAlpha: true, isPlanar: false, colorSpaceName: .deviceRGB, bytesPerRow: 0, bitsPerPixel: 0)
+        if let rep {
+            rep.size = NSSize(width: 64, height: 64)
+            NSGraphicsContext.saveGraphicsState()
+            NSGraphicsContext.current = NSGraphicsContext(bitmapImageRep: rep)
+            small.draw(in: NSRect(x: 0, y: 0, width: 64, height: 64))
+            NSGraphicsContext.restoreGraphicsState()
+            let image = NSImage(size: NSSize(width: 64, height: 64))
+            image.addRepresentation(rep)
+            cache[key] = image
+            return image
+        }
+        cache[key] = full
+        return full
     }
+
+    @MainActor static func clear() { cache.removeAll() }
 }
 
 extension NSView {

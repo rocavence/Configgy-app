@@ -30,8 +30,9 @@ final class SettingsNavigation {
 
 /// Hosts `SettingsView` with the traffic lights over the card.
 @MainActor
-final class SettingsWindow {
+final class SettingsWindow: NSObject, NSWindowDelegate {
     let navigation = SettingsNavigation()
+    var onClose: () -> Void = {}
     var showGuide: () -> Void = {} {
         didSet { host.rootView = SettingsView(model: model, navigation: navigation, showGuide: showGuide) }
     }
@@ -50,8 +51,17 @@ final class SettingsWindow {
         window.titlebarAppearsTransparent = true
         window.isMovableByWindowBackground = true
         window.isReleasedWhenClosed = false
+        super.init()
         window.contentView = host
+        window.delegate = self
         window.setFrame(NSRect(x: 0, y: 0, width: 900, height: 600), display: false)
+    }
+
+    func windowWillClose(_ notification: Notification) {
+        DispatchQueue.main.async { [weak self] in
+            self?.window.contentView = nil
+            self?.onClose()
+        }
     }
 
     func show(_ page: SettingsPage, activate: Bool = true) {

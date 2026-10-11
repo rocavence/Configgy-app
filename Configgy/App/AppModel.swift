@@ -194,6 +194,7 @@ final class AppModel {
         busy.remove(key)
         onActivity(ok ? .succeeded : .failed)
         refresh()
+        Memory.relieve()
     }
 
     /// Backs up everything that can be backed up now (Zen only when it's closed).
@@ -283,6 +284,7 @@ final class AppModel {
         Task {
             findings = await Task.detached { BackupService.scanForSecrets(targets, context: context) }.value
             refresh()
+            Memory.relieve()
         }
     }
 

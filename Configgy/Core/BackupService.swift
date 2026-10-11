@@ -131,19 +131,31 @@ enum BackupService {
     /// Checks snapshots not checked before for files the secret filter now
     /// blocks. Clean ones are remembered so each zip is only read once.
     static func scanForSecrets(_ targets: [BackupTarget], context: Context) -> [Finding] {
-        var scanned = Set(StatusFile.load(context.home).scanned)
+        let status = StatusFile.load(context.home)
+        var scanned = Set(status.scanned)
+        var flagged: [String: [String]] = [:]
         var findings: [Finding] = []
         for target in targets {
             for snapshot in target.store.list() where !scanned.contains(snapshot.name) {
-                guard let entries = try? SnapshotStore.contents(of: snapshot.path) else { continue }
+                if let known = status.flagged[snapshot.name] {
+                    flagged[snapshot.name] = known
+                    findings.append(Finding(snapshot: snapshot, targetName: target.name, paths: known))
+                    continue
+                }
+                guard let entries = try? autoreleasepool(invoking: { try SnapshotStore.contents(of: snapshot.path) }) else { continue }
                 let bad = entries.filter { entry in
                     let rel = entry.split(separator: "/").dropFirst().joined(separator: "/")   // drop "snapshot/"
                     return !entry.hasSuffix("/") && Sensitive.isSensitive(rel)
                 }
-                if bad.isEmpty { scanned.insert(snapshot.name) } else { findings.append(Finding(snapshot: snapshot, targetName: target.name, paths: bad)) }
+                if bad.isEmpty {
+                    scanned.insert(snapshot.name)
+                } else {
+                    flagged[snapshot.name] = bad
+                    findings.append(Finding(snapshot: snapshot, targetName: target.name, paths: bad))
+                }
             }
         }
-        StatusFile.update(context.home) { $0.scanned = Array(scanned).sorted() }
+        StatusFile.update(context.home) { $0.scanned = Array(scanned).sorted(); $0.flagged = flagged }
         return findings
     }
 
@@ -164,13 +176,14 @@ enum BackupService {
             try fm.copyItem(atPath: clean, toPath: partial)
             _ = try fm.replaceItemAt(URL(fileURLWithPath: finding.snapshot.path), withItemAt: URL(fileURLWithPath: partial))
         }
-        StatusFile.update(context.home) { $0.scanned.append(finding.snapshot.name) }
+        StatusFile.update(context.home) { $0.scanned.append(finding.snapshot.name); $0.flagged[finding.snapshot.name] = nil }
         Log.write("Removed \(finding.paths.count) secret files from \(finding.snapshot.name)", home: context.home)
     }
 
     static func deleteSnapshot(_ finding: Finding, context: Context) {
         try? FileManager.default.removeItem(atPath: finding.snapshot.path)
         try? FileManager.default.removeItem(atPath: finding.snapshot.path + ".json")
+        StatusFile.update(context.home) { $0.flagged[finding.snapshot.name] = nil }
         Log.write("Deleted \(finding.snapshot.name), which held secret files", home: context.home)
     }
 }

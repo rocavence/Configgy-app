@@ -177,12 +177,21 @@ private struct LocationMenuButton: View {
 }
 
 @MainActor
-final class OnboardingWindow {
+final class OnboardingWindow: NSObject, NSWindowDelegate {
     private var window: NSWindow?
     private let model: AppModel
     var onFinish: () -> Void = {}
+    var onClose: () -> Void = {}
 
     init(model: AppModel) { self.model = model }
+
+    func windowWillClose(_ notification: Notification) {
+        DispatchQueue.main.async { [weak self] in
+            self?.window?.contentView = nil
+            self?.window = nil
+            self?.onClose()
+        }
+    }
 
     func show(activate: Bool = true) {
         window?.close()
@@ -192,6 +201,7 @@ final class OnboardingWindow {
         window.titlebarAppearsTransparent = true
         window.isMovableByWindowBackground = true
         window.isReleasedWhenClosed = false
+        window.delegate = self
         window.contentView = NSHostingView(rootView: OnboardingView(model: model) { [weak self] in
             self?.window?.close()
             self?.onFinish()
