@@ -2,9 +2,9 @@
 // Reicon commit ceab2340577684a47d8e361172bdbcd75cb8c7f3
 
 enum Reicon: String, CaseIterable, Sendable {
-    case boxTime = "box-time"
-    case boxTick = "box-tick"
-    case danger = "danger"
+    case boxTimeBold = "box-time-bold"
+    case boxTickBold = "box-tick-bold"
+    case dangerBold = "danger-bold"
     case setting2 = "setting2"
     case archive = "archive"
     case filter = "filter"

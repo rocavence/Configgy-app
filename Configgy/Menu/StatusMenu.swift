@@ -24,10 +24,10 @@ final class StatusMenu: NSObject, NSMenuDelegate {
         button.layer?.removeAllAnimations()
         switch activity {
         case .idle:
-            button.image = Icon.nsImage(.boxTime, size: 18)
+            button.image = Icon.nsImage(.boxTimeBold, size: 18)
             button.contentTintColor = nil
         case .working:
-            button.image = Icon.nsImage(.boxTime, weight: .filled, size: 18)
+            button.image = Icon.nsImage(.boxTimeBold, weight: .filled, size: 18)
             button.contentTintColor = nil
             if !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion {
                 button.wantsLayer = true
@@ -37,11 +37,11 @@ final class StatusMenu: NSObject, NSMenuDelegate {
                 button.layer?.add(pulse, forKey: "pulse")
             }
         case .succeeded:
-            button.image = Icon.nsImage(.boxTick, weight: .filled, size: 18)
+            button.image = Icon.nsImage(.boxTickBold, weight: .filled, size: 18)
             button.contentTintColor = .systemGreen
             revertSoon(after: 1.8)
         case .failed:
-            button.image = Icon.nsImage(.danger, weight: .filled, size: 18)
+            button.image = Icon.nsImage(.dangerBold, weight: .filled, size: 18)
             button.contentTintColor = .systemRed
             revertSoon(after: 4)
         }

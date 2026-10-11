@@ -10,6 +10,8 @@ struct TargetRow: Identifiable, Sendable, Equatable {
     let health: Health
     let reason: String
     let newest: Snapshot?
+    /// Every snapshot, oldest first, for the timeline.
+    let snapshots: [Snapshot]
     /// Snapshots made on this Mac, and on others.
     let mine: Int
     let others: Int
@@ -161,7 +163,7 @@ final class AppModel {
                 : String(localized: "Not backed up on this Mac yet. Other Macs have \(all.count) backups.")
         }
         return TargetRow(key: target.key, name: target.name, bundleID: target.bundleID, health: health, reason: reason,
-                         newest: newest, mine: mine.count, others: all.count - mine.count)
+                         newest: newest, snapshots: all, mine: mine.count, others: all.count - mine.count)
     }
 
     nonisolated private static func missingReason(_ target: BackupTarget, context: Context) -> String? {

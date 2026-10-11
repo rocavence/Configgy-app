@@ -198,6 +198,7 @@ enum SelfTest {
     /// Every window renders at its size, with a backed-up target in the list.
     private static func windows() async throws {
         _ = try BackupService.backup(ClaudeTarget(context: context, base: cloud, keep: 10), context: context)
+        seedTimeline()
         let model = AppModel(context: context)
         model.refresh()
         try await Task.sleep(for: .milliseconds(500))
@@ -270,6 +271,26 @@ enum SelfTest {
         settings.onboarded = true
         settings.save(home)
         TargetCatalog.save([TargetDef(id: "notes", name: "Notes", paths: ["~/Notes/settings.json"])], home: home)
+    }
+
+    /// Backups spread over the past weeks from this Mac and another, so the timeline has something to show.
+    private static func seedTimeline() {
+        let now = Date()
+        func seed(_ dir: String, _ prefix: String, _ host: String, _ daysAgo: [Double], files: Int) {
+            try? fm.createDirectory(atPath: dir, withIntermediateDirectories: true)
+            for d in daysAgo {
+                let date = now.addingTimeInterval(-d * 86_400)
+                let ts = SnapshotStore.stamp(date)
+                let path = dir + "/\(prefix)\(host)-\(ts).zip"
+                fm.createFile(atPath: path, contents: Data())
+                let meta = SnapshotMeta(host: host, ts: ts, iso: ISO8601DateFormatter().string(from: date), hash: UUID().uuidString, files: files)
+                try? JSONEncoder().encode(meta).write(to: URL(fileURLWithPath: path + ".json"))
+            }
+        }
+        seed(cloud + "/claude", "configgy-claude-", "TestMac", [1.2, 3.4, 6, 9.5, 13, 19, 26], files: 42)
+        seed(cloud + "/claude", "configgy-claude-", "Roca-Work", [2.5, 11, 24], files: 40)
+        seed(cloud + "/zen", "configgy-zen-", "TestMac", [0.6, 1.6, 2.4, 3.7, 5, 6.2, 8, 10.5, 12, 15, 17.5, 21, 23, 28], files: 318)
+        seed(cloud + "/zen", "configgy-zen-", "Roca-Work", [4.2, 9, 16, 22.5], files: 305)
     }
 
     private static func writeSession(_ profile: String, spaces: [String]) throws {

@@ -67,6 +67,9 @@ enum Accent: String, CaseIterable, Sendable {
 /// darkened on light backgrounds and a dark one (Klein blue) lightened on dark
 /// ones, until it reads at 4.5:1 or better.
 struct AccentText: ShapeStyle {
+    /// 4.5:1 for text; 3:1 is enough for graphics such as timeline dots (WCAG 1.4.11).
+    var minimumContrast: CGFloat = 4.5
+
     func resolve(in environment: EnvironmentValues) -> Color {
         let base = Accent.current.nsColor
         let dark = environment.colorScheme == .dark
@@ -75,7 +78,7 @@ struct AccentText: ShapeStyle {
         for _ in 0..<10 {
             let l = Accent.luminance(color)
             let contrast = (max(l, background) + 0.05) / (min(l, background) + 0.05)
-            if contrast >= 4.5 { break }
+            if contrast >= minimumContrast { break }
             color = color.blended(withFraction: 0.15, of: dark ? .white : .black) ?? color
         }
         return Color(nsColor: color)
@@ -84,4 +87,5 @@ struct AccentText: ShapeStyle {
 
 extension ShapeStyle where Self == AccentText {
     static var accentText: AccentText { AccentText() }
+    static var accentGraphic: AccentText { AccentText(minimumContrast: 3) }
 }

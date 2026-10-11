@@ -33,6 +33,8 @@ final class RestoreSession: @unchecked Sendable {
 struct RestoreSheet: View {
     let model: AppModel
     let target: BackupTarget
+    /// A snapshot picked on the timeline: skips straight to the preview.
+    var initial: Snapshot? = nil
     let done: () -> Void
 
     private enum Step { case choose, loading, review, running, finished }
@@ -66,7 +68,11 @@ struct RestoreSheet: View {
         .padding(Spacing.s24)
         .frame(width: 580, height: 520)
         .tint(accent.color)
-        .task { snapshots = target.store.list().reversed(); selected = snapshots.first }
+        .task {
+            snapshots = target.store.list().reversed()
+            selected = initial ?? snapshots.first
+            if initial != nil { await load() }
+        }
         .alert(String(localized: "Quit Zen to restore?"), isPresented: $askQuit) {
             Button(String(localized: "Quit Zen and Restore")) { Task { await apply(quittingZen: true) } }
             Button(String(localized: "Cancel"), role: .cancel) {}
