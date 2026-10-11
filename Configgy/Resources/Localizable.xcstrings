@@ -441,6 +441,46 @@
         }
       }
     },
+    "%lld backups in the folder contain secret files (logins, keys or tokens) from before Configgy filtered them.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld backups in the folder contain secret files (logins, keys or tokens) from before Configgy filtered them."
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "資料夾裡有 %lld 份備份含有祕密檔（登入資料、金鑰或 token），是 Configgy 開始過濾前留下的。"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "フォルダ内の %lld 個のバックアップに、Configgy が除外を始める前の秘密ファイル（ログイン情報、鍵、トークン）が含まれています。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "폴더의 백업 %lld개에 Configgy가 걸러내기 전에 들어간 비밀 파일(로그인 정보, 키, 토큰)이 있습니다."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld copias de la carpeta contienen archivos secretos (inicios de sesión, claves o tokens) de antes de que Configgy los filtrara."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld backups da pasta contêm arquivos secretos (logins, chaves ou tokens) de antes de o Configgy filtrá-los."
+          }
+        }
+      }
+    },
     "%lld backups you can restore": {
       "localizations": {
         "en": {
@@ -4961,6 +5001,46 @@
         }
       }
     },
+    "None of the protected apps are set up here. Restore one to bring its settings to this Mac.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "None of the protected apps are set up here. Restore one to bring its settings to this Mac."
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "要保護的 App 都還沒在這台 Mac 上設定。還原其中一個，就能把設定帶過來。"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "保護しているアプリはこのMacに設定されていません。復元すると設定をこのMacに持ってこられます。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "보호 중인 앱이 이 Mac에 설정되어 있지 않습니다. 하나를 복원하면 설정을 이 Mac으로 가져옵니다."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ninguna de las apps protegidas está configurada aquí. Restaura una para traer sus ajustes a este Mac."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nenhum dos apps protegidos está configurado aqui. Restaure um para trazer os ajustes para este Mac."
+          }
+        }
+      }
+    },
     "None of this target's files exist on this Mac.": {
       "localizations": {
         "en": {
@@ -5277,6 +5357,46 @@
           "stringUnit": {
             "state": "translated",
             "value": "Nada protegido ainda"
+          }
+        }
+      }
+    },
+    "Nothing to back up on this Mac": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nothing to back up on this Mac"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "這台 Mac 沒有需要備份的設定"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "このMacにはバックアップするものがありません"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "이 Mac에는 백업할 것이 없습니다"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No hay nada que copiar en este Mac"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nada para fazer backup neste Mac"
           }
         }
       }
@@ -7757,6 +7877,46 @@
           "stringUnit": {
             "state": "translated",
             "value": "Tentar de novo"
+          }
+        }
+      }
+    },
+    "Unknown date": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Unknown date"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "日期不明"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "日付不明"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "날짜 알 수 없음"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fecha desconocida"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Data desconhecida"
           }
         }
       }

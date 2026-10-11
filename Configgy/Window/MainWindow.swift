@@ -59,6 +59,12 @@ struct MainView: View {
                 VStack(alignment: .leading, spacing: Spacing.s24) {
                     StatusHero(model: model, backupAll: { Task { await model.backupAll() } }, openSettings: openSettings,
                                reviewFindings: { reviewingFindings = true })
+                    // The hero shows one thing; a secret-files warning must never be hidden behind another.
+                    if !model.findings.isEmpty, !StatusHero.isAboutFindings(model) {
+                        Banner(icon: .warning, tone: Palette.warning,
+                               text: String(localized: "\(model.findings.count) backups in the folder contain secret files (logins, keys or tokens) from before Configgy filtered them."),
+                               action: String(localized: "Review…")) { reviewingFindings = true }
+                    }
                     if !model.rows.isEmpty {
                         VStack(spacing: 0) {
                             ForEach(Array(model.rows.enumerated()), id: \.element.id) { index, row in
@@ -248,6 +254,12 @@ private struct StatusHero: View {
 
     private enum Mood { case good, attention, bad, empty }
 
+    /// Whether the hero is currently the secret-files warning (so it isn't shown twice).
+    static func isAboutFindings(_ model: AppModel) -> Bool {
+        model.location == .ok && !model.rows.isEmpty && !model.findings.isEmpty
+            && !model.rows.contains { $0.health == .failed }
+    }
+
     private struct Summary {
         let mood: Mood
         let title: String
@@ -296,7 +308,12 @@ private struct StatusHero: View {
                            detail: pending.count == 1 ? pending[0].reason : pending.map(\.name).joined(separator: "、"),
                            action: String(localized: "Back Up Now"), perform: backupAll)
         }
-        let latest = rows.compactMap { $0.newest?.date }.max()
+        if !rows.contains(where: { $0.health == .protected }) {
+            return Summary(mood: .empty, title: String(localized: "Nothing to back up on this Mac"),
+                           detail: String(localized: "None of the protected apps are set up here. Restore one to bring its settings to this Mac."),
+                           action: nil, perform: nil)
+        }
+        let latest = rows.filter { $0.health == .protected }.compactMap { $0.newest?.date }.max()
         let place = model.context.base.map { BackupLocation.provider(of: $0, home: model.context.home).title } ?? ""
         return Summary(mood: .good, title: String(localized: "Your settings are backed up"),
                        detail: latest.map { String(localized: "Last backup \(RelativeTime.describe($0).lowercasedIfEnglish), in \(place).") } ?? "",

@@ -70,7 +70,7 @@ struct RestoreSheet: View {
         .tint(accent.color)
         .task {
             snapshots = target.store.list().reversed()
-            selected = initial ?? snapshots.first
+            selected = initial ?? snapshots.first { $0.date != nil } ?? snapshots.first
             if initial != nil { await load() }
         }
         .alert(String(localized: "Quit Zen to restore?"), isPresented: $askQuit) {
@@ -94,6 +94,12 @@ struct RestoreSheet: View {
                         ForEach(snapshots.filter { $0.date.map { Calendar.current.startOfDay(for: $0) } == day }) { snapshot in
                             snapshotRow(snapshot).tag(Optional(snapshot))
                         }
+                    }
+                }
+                let undated = snapshots.filter { $0.date == nil }
+                if !undated.isEmpty {
+                    Section(String(localized: "Unknown date")) {
+                        ForEach(undated) { snapshotRow($0).tag(Optional($0)) }
                     }
                 }
             }
