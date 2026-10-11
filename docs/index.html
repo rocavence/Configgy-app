@@ -12,10 +12,10 @@
 <meta name="robots" content="index, follow, max-image-preview:large">
 <link rel="canonical" href="https://configgy.rocavence.com/">
 <link rel="alternate" hreflang="zh-Hant" href="https://configgy.rocavence.com/">
-<link rel="alternate" hreflang="en" href="https://configgy.rocavence.com/">
-<link rel="alternate" hreflang="x-default" href="https://configgy.rocavence.com/">
-<link rel="icon" type="image/png" href="icon.png">
-<link rel="apple-touch-icon" href="icon.png">
+<link rel="alternate" hreflang="en" href="https://configgy.rocavence.com/en/">
+<link rel="alternate" hreflang="x-default" href="https://configgy.rocavence.com/en/">
+<link rel="icon" type="image/png" href="/icon.png">
+<link rel="apple-touch-icon" href="/icon.png">
 <!-- Open Graph -->
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Configgy">
@@ -49,8 +49,16 @@
   "softwareHelp": "https://github.com/rocavence/Configgy-app",
   "license": "https://creativecommons.org/licenses/by-nc-sa/4.0/",
   "isAccessibleForFree": true,
-  "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
-  "author": { "@type": "Person", "name": "rocavence", "url": "https://github.com/rocavence" },
+  "offers": {
+    "@type": "Offer",
+    "price": "0",
+    "priceCurrency": "USD"
+  },
+  "author": {
+    "@type": "Person",
+    "name": "rocavence",
+    "url": "https://github.com/rocavence"
+  },
   "featureList": [
     "Versioned zip snapshots of any config target, with history and rollback",
     "Zen Browser profile backed up automatically when you quit Zen",
@@ -59,8 +67,30 @@
     "Preview the diff before a restore; overwritten files are backed up first",
     "Secret-free by design: no passwords, cookies, history, SSH private keys, or gh tokens",
     "Backups land in Dropbox, iCloud Drive, Google Drive, or a folder you choose",
-    "Same binary runs headless as a CLI"
-  ]
+    "Same binary runs headless as a CLI",
+    "Install with Homebrew: brew install --cask rocavence/tap/configgy",
+    "Six languages: Traditional Chinese, English, Japanese, Korean, Spanish, Brazilian Portuguese"
+  ],
+  "alternateName": "Configgy for Mac",
+  "dateModified": "2026-10-11",
+  "image": "https://configgy.rocavence.com/icon.png",
+  "screenshot": [
+    "https://configgy.rocavence.com/readme-shots/en-main-dark.png",
+    "https://configgy.rocavence.com/readme-shots/en-restore-light.png",
+    "https://configgy.rocavence.com/readme-shots/en-exclusions-dark.png",
+    "https://configgy.rocavence.com/readme-shots/en-onboarding-light.png"
+  ],
+  "installUrl": "https://configgy.rocavence.com/#install",
+  "codeRepository": "https://github.com/rocavence/Configgy-app",
+  "inLanguage": [
+    "zh-Hant",
+    "en",
+    "ja",
+    "ko",
+    "es",
+    "pt-BR"
+  ],
+  "fileSize": "2.2 MB"
 }
 </script>
 <!-- Structured data: FAQ -->
@@ -72,27 +102,66 @@
     {
       "@type": "Question",
       "name": "What does Configgy do?",
-      "acceptedAnswer": { "@type": "Answer", "text": "Configgy is a macOS menu bar app that keeps the settings that are painful to lose — but that you don't want in a blanket cloud sync — versioned, portable, and one click away. It snapshots Zen Browser, Claude Code, and any folder you point it at into dated zip files in your cloud folder, so you can roll back or set up a new Mac from them." }
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Configgy is a macOS menu bar app that keeps the settings that are painful to lose — but that you don't want in a blanket cloud sync — versioned, portable, and one click away. It snapshots Zen Browser, Claude Code, and any folder you point it at into dated zip files in your cloud folder, so you can roll back or set up a new Mac from them."
+      }
     },
     {
       "@type": "Question",
       "name": "Does Configgy back up my passwords or SSH keys?",
-      "acceptedAnswer": { "@type": "Answer", "text": "No. Passwords, cookies, browsing history, SSH private keys, and the token-bearing gh hosts.yml are never copied. Those come back through your Mozilla account and Keychain. Discovery only suggests config that has no cloud sync of its own, and deliberately excludes secrets." }
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "No. Passwords, cookies, browsing history, SSH private keys, and the token-bearing gh hosts.yml are never copied. Those come back through your Mozilla account and Keychain. Discovery only suggests config that has no cloud sync of its own, and deliberately excludes secrets."
+      }
     },
     {
       "@type": "Question",
       "name": "Where do the backups go?",
-      "acceptedAnswer": { "@type": "Answer", "text": "Into a Configgy folder inside a backup location you pick: Dropbox (the default when found), iCloud Drive, Google Drive, or any custom folder. Each target keeps versioned, deduped zip snapshots, and Zen's zips embed a restore.sh so they can self-restore on a bare machine." }
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Into a Configgy folder inside a backup location you pick: Dropbox (the default when found), iCloud Drive, Google Drive, or any custom folder. Each target keeps versioned, deduped zip snapshots, and Zen's zips embed a restore.sh so they can self-restore on a bare machine."
+      }
     },
     {
       "@type": "Question",
       "name": "Why does Configgy need Full Disk Access?",
-      "acceptedAnswer": { "@type": "Answer", "text": "The app reads config folders and writes to your cloud backup folder, both of which macOS protects. macOS never prompts for Full Disk Access automatically, so Configgy guides you through granting it on first launch. Without it, it can't reach Dropbox or your protected config." }
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "The app reads config folders and writes to your cloud backup folder, both of which macOS protects. macOS never prompts for Full Disk Access automatically, so Configgy guides you through granting it on first launch. Without it, it can't reach Dropbox or your protected config."
+      }
     },
     {
       "@type": "Question",
       "name": "Is Configgy free?",
-      "acceptedAnswer": { "@type": "Answer", "text": "Yes — free and open source under CC BY-NC-SA 4.0. It's a personal tool shared as-is, self-signed rather than Apple-notarized, so the first launch needs right-click → Open." }
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Yes — free and open source under CC BY-NC-SA 4.0. It's a personal tool shared as-is, self-signed rather than Apple-notarized, so the first launch needs right-click → Open."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "How do I install Configgy?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Run brew install --cask rocavence/tap/configgy, or download the zip from GitHub Releases and drag Configgy into Applications. It's self-signed, so without Homebrew the first launch needs right-click → Open or xattr -dr com.apple.quarantine /Applications/Configgy.app."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Can I restore my settings on a new Mac?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Yes. Install Configgy on the new Mac, point it at the same backup folder, and restore each target. Configgy shows a preview of every file that will be replaced or added, and backs up what it overwrites first."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Which macOS versions does Configgy support?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "macOS 14 Sonoma or later, on Apple silicon and Intel Macs."
+      }
     }
   ]
 }
@@ -291,7 +360,7 @@
 
 <nav>
   <div class="wrap">
-    <a class="brand" href="#top"><img src="icon.png" alt="Configgy"><span>Configgy</span></a>
+    <a class="brand" href="#top"><img src="/icon.png" alt="Configgy"><span>Configgy</span></a>
     <div class="nav-right">
       <a class="nav-link hide-sm" href="#how" data-i="nav.how">運作原理</a>
       <a class="nav-link hide-sm" href="#features" data-i="nav.features">功能</a>
@@ -306,7 +375,7 @@
 
 <header class="hero" id="top">
   <div class="wrap">
-    <img class="appicon" src="icon.png" alt="Configgy app icon">
+    <img class="appicon" src="/icon.png" alt="Configgy app icon">
     <h1 data-i="hero.h1">你的設定檔，<br><span class="hl">值得一份回得去的備份</span></h1>
     <p class="sub" data-i="hero.sub">Configgy 是常駐選單列的 macOS app：把 Zen Browser、Claude Code、以及任何你指定的資料夾，存成帶日期的 zip 快照放進你的雲端資料夾——可預覽、可回滾、換機器一鍵還原。密碼與私鑰一概不碰。</p>
     <div class="cta">
@@ -318,8 +387,8 @@
     <!-- INTERACTIVE DEMO -->
     <div class="demo-stage">
       <div class="win shot-win" id="win">
-        <img class="d" src="shots/main-dark.png" alt="Configgy 主視窗（深色）：最上面一句話告訴你設定都已備份，下面列出每個項目上次備份的時間" width="1600" height="1481">
-        <img class="l" src="shots/main-light.png" alt="Configgy 主視窗（淺色）" width="1600" height="1481" loading="lazy">
+        <img class="d" src="/shots/main-dark.png" alt="Configgy 主視窗（深色）：最上面一句話告訴你設定都已備份，下面列出每個項目上次備份的時間" width="1600" height="1481">
+        <img class="l" src="/shots/main-light.png" alt="Configgy 主視窗（淺色）" width="1600" height="1481" loading="lazy">
       </div>
       <div class="demo-ctrl">
         <label class="toggle" id="theme"><span class="switch"></span><span data-i="demo.theme">淺色模式</span></label>
@@ -365,26 +434,26 @@
     <h2 data-i="shot.h2">長這樣</h2>
     <div class="shots">
       <div class="shot">
-        <img src="shots/main-dark.png" alt="主視窗：最上面一句話說明設定是否都已備份，下面列出每個項目上次備份的時間與可還原的份數" loading="lazy" width="1600" height="1481">
+        <img src="/shots/main-dark.png" alt="主視窗：最上面一句話說明設定是否都已備份，下面列出每個項目上次備份的時間與可還原的份數" loading="lazy" width="1600" height="1481">
         <p data-i="shot.c1"><b>一眼看出安不安全</b> — 最上面一句話告訴你設定有沒有備份好、要不要做什麼；每個項目寫出上次什麼時候備份、有幾份可以還原。</p>
       </div>
       <div class="shot">
-        <img src="shots/restore-light.png" alt="還原預覽：列出會被取代與新增的每個檔案，確認後才還原" loading="lazy" width="1600" height="1569">
+        <img src="/shots/restore-light.png" alt="還原預覽：列出會被取代與新增的每個檔案，確認後才還原" loading="lazy" width="1600" height="1569">
         <p data-i="shot.c4"><b>還原前先看清楚</b> — 列出每個會被取代或新增的檔案，目前的版本會先另存一份，確認後才寫入。</p>
       </div>
       <div class="shot">
-        <img src="shots/exclusions-dark.png" alt="設定的排除頁：一律不備份的檔案，以及每個項目實際複製的內容" loading="lazy" width="1600" height="1092">
+        <img src="/shots/exclusions-dark.png" alt="設定的排除頁：一律不備份的檔案，以及每個項目實際複製的內容" loading="lazy" width="1600" height="1092">
         <p data-i="shot.c2"><b>收什麼、不收什麼</b> — 設定裡列出一律不備份的祕密檔，以及每個項目實際複製的檔案，一目了然。</p>
       </div>
       <div class="shot">
-        <img src="shots/onboarding-light.png" alt="第一次使用導覽：選備份資料夾、選要保護的項目" loading="lazy" width="1600" height="1501">
+        <img src="/shots/onboarding-light.png" alt="第一次使用導覽：選備份資料夾、選要保護的項目" loading="lazy" width="1600" height="1501">
         <p data-i="shot.c3"><b>第一次使用</b> — 選好備份資料夾、勾選要保護的設定，一分鐘內開始。</p>
       </div>
     </div>
   </div>
 </section>
 
-<section class="block">
+<section class="block" id="install">
   <div class="wrap center">
     <span class="eyebrow" data-i="inst.eyebrow">安裝</span>
     <h2 data-i="inst.h2">下載 zip，拖進「應用程式」</h2>
@@ -423,7 +492,7 @@
       <p data-i="note.p1">一開始它叫 Zennly，只會做一件事：Zen 一關就把 profile 壓成 zip 丟 Dropbox。後來 Claude Code 的設定也想備份，才發現需要的不是第二個 app，而是一個模型——一組路徑、版本化的 zip、有歷史、有 diff、還原是加上去而不是蓋掉。</p>
       <p data-i="note.p2">Configgy 很小、開源、免費，是自己要用才寫的工具。整個專案是用 Claude Code 邊聊邊長出來的，介面靠著看截圖一輪輪調。如果它幫你在換機器那天少痛一點，那就值得了。</p>
       <a class="author" href="https://github.com/rocavence" target="_blank" rel="noopener">
-        <img src="avatar.png" alt="rocavence" loading="lazy" width="42" height="42">
+        <img src="/avatar.png" alt="rocavence" loading="lazy" width="42" height="42">
         <span class="who"><b>@rocavence</b><small data-i="note.role">作者 · GitHub</small></span>
       </a>
     </div>
@@ -432,7 +501,7 @@
 
 <footer>
   <div class="wrap">
-    <div class="brand" style="font-size:15px"><img src="icon.png" alt="" style="width:24px;height:24px;border-radius:7px"><span>Configgy</span></div>
+    <div class="brand" style="font-size:15px"><img src="/icon.png" alt="" style="width:24px;height:24px;border-radius:7px"><span>Configgy</span></div>
     <div class="foot-links">
       <a href="https://github.com/rocavence/Configgy-app" target="_blank" rel="noopener">GitHub</a>
       <a href="https://github.com/rocavence/Configgy-app/releases/latest" target="_blank" rel="noopener" data-i="foot.dl">下載</a>
@@ -536,13 +605,21 @@ function setLang(lang){
     if(v!=null) el.innerHTML=v;
   });
   document.querySelectorAll(".lang button").forEach(b=>b.classList.toggle("on",b.dataset.lang===lang));
-  try{localStorage.setItem("configgy-lang",lang)}catch(e){}
 }
-document.querySelectorAll(".lang button").forEach(b=>b.onclick=()=>setLang(b.dataset.lang));
+/* 中文在 /、英文在 /en/（各自是完整的靜態頁，搜尋引擎兩種語言都收得到）；切換語言就換頁 */
+const PAGE_LANG=location.pathname.startsWith("/en")?"en":"zh";
+const pageFor=l=>l==="en"?"/en/":"/";
+document.querySelectorAll(".lang button").forEach(b=>b.onclick=()=>{
+  try{localStorage.setItem("configgy-lang",b.dataset.lang)}catch(e){}
+  if(b.dataset.lang!==PAGE_LANG) location.href=pageFor(b.dataset.lang)+location.hash;
+});
 let saved=null;
 try{saved=localStorage.getItem("configgy-lang");}catch(e){}
-if(!saved) saved=(navigator.language||"").toLowerCase().startsWith("zh")?"zh":"en";
-setLang(saved==="en"?"en":"zh");
+// 第一次來、沒選過語言：依瀏覽器語言帶到對的頁；爬蟲不轉，兩頁都照原樣收錄
+if(!saved&&!/bot|crawl|spider|slurp|preview/i.test(navigator.userAgent))
+  saved=(navigator.language||"").toLowerCase().startsWith("zh")?"zh":"en";
+if(saved&&saved!==PAGE_LANG) location.replace(pageFor(saved)+location.hash);
+setLang(PAGE_LANG);
 
 // theme switch on the demo window
 const th=document.getElementById("theme"), win=document.getElementById("win");

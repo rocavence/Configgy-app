@@ -8,8 +8,8 @@
 - Download: https://github.com/rocavence/Configgy-app/releases/latest
 - Homebrew: `brew install --cask rocavence/tap/configgy` (removes the quarantine flag; update with `brew upgrade`)
 - Source code: https://github.com/rocavence/Configgy-app
-- Website: https://configgy.rocavence.com
-- Current version: 0.3.1
+- Website: https://configgy.rocavence.com (English: https://configgy.rocavence.com/en/)
+- Current version: 1.0.0 (October 2026); the app is about 7 MB, a 2.2 MB download
 
 ## What it does
 
